@@ -53,27 +53,32 @@ export default function BankingTab() {
         </div>
       )}
 
-      {bankData && (
-        <div className="border p-4 rounded bg-white space-y-2">
-          <p><b>Total Banked:</b> {bankData.totalBanked.toFixed(0)} gCO₂e ({(bankData.totalBanked/1e6).toFixed(3)} t)</p>
-
-          <button
-            className="px-3 py-2 rounded bg-emerald-600 text-white disabled:opacity-40"
-            disabled={!cb || cb.complianceBalance_gco2eq <= 0}
-            onClick={bankSurplus}
-          >
-            Bank Surplus
-          </button>
-
-          <button
-            className="px-3 py-2 rounded bg-indigo-600 text-white disabled:opacity-40"
-            disabled={!cb || cb.complianceBalance_gco2eq >= 0 || bankData.totalBanked <= 0}
-            onClick={applyBank}
-          >
-            Apply Bank to Deficit
-          </button>
-        </div>
-      )}
+     {bankData && (
+       <div className="border p-4 rounded bg-white space-y-2">
+         <p>
+           <b>Total Banked:</b>{" "}
+           {((bankData.totalBanked ?? 0)).toFixed(0)} gCO₂e (
+           {((bankData.totalBanked ?? 0) / 1e6).toFixed(3)} t)
+         </p>
+     
+         <button
+           className="px-3 py-2 rounded bg-emerald-600 text-white disabled:opacity-40"
+           disabled={!cb || cb.complianceBalance_gco2eq <= 0}
+           onClick={bankSurplus}
+         >
+           Bank Surplus
+         </button>
+     
+         <button
+           className="px-3 py-2 rounded bg-indigo-600 text-white disabled:opacity-40"
+           disabled={!cb || cb.complianceBalance_gco2eq >= 0 || (bankData.totalBanked ?? 0) <= 0}
+           onClick={applyBank}
+         >
+           Apply Bank to Deficit
+         </button>
+       </div>
+     )}
+     
     </div>
   );
 }
