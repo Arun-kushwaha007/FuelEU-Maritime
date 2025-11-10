@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import RoutesTab from "./tabs/RoutesTab";
+import CompareTab from "./tabs/CompareTab";
 
 function Placeholder({label}:{label:string}) {
   return <div className="p-4 text-gray-600">{label} — implement next</div>;
@@ -22,6 +23,8 @@ export default function App(){
       {tab==="compare" && <Placeholder label="Compare Tab"/>}
       {tab==="banking" && <Placeholder label="Banking Tab"/>}
       {tab==="pooling" && <Placeholder label="Pooling Tab"/>}
+      {tab==="compare" && <CompareTab/>}
+      
     </div>
   );
 }
