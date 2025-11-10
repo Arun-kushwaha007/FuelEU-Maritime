@@ -65,4 +65,86 @@ router.post("/pools", async (req, res) => {
   }
 });
 
+// BANKING ENDPOINTS
+
+// GET /banking/records?shipId=R001&year=2024
+router.get("/banking/records", async (req, res) => {
+  const { shipId, year } = req.query;
+  if (!shipId || !year) return res.status(400).json({ error: "shipId and year required" });
+
+  const entries = await prisma.bankEntry.findMany({
+    where: { shipId: String(shipId), year: Number(year) },
+    orderBy: { createdAt: "asc" }
+  });
+
+  const totalBanked = entries.reduce((sum: any, e: { amount: any; }) => sum + e.amount, 0);
+
+  res.json({ totalBanked, entries });
+});
+
+
+// POST /banking/bank  { shipId, year }
+router.post("/banking/bank", async (req, res) => {
+  const { shipId, year } = req.body;
+  if (!shipId || !year) return res.status(400).json({ error: "shipId and year required" });
+
+  const route = await prisma.route.findUnique({ where: { routeId: shipId }});
+  if (!route) return res.status(404).json({ error: "route not found" });
+
+  const cb = (await prisma.shipCompliance.findFirst({
+    where: { shipId, year },
+    orderBy: { createdAt: "desc" }
+  }))?.cb_gco2eq;
+
+  if (!cb) return res.status(400).json({ error: "Run CB first via /compliance/cb" });
+  if (cb <= 0) return res.status(400).json({ error: "CB is not positive; cannot bank" });
+
+  const entry = await prisma.bankEntry.create({
+    data: { shipId, year, amount: cb }
+  });
+
+  res.json({ message: "Banked", amount_banked: cb, entry });
+});
+
+
+// POST /banking/apply  { shipId, year }
+router.post("/banking/apply", async (req, res) => {
+  const { shipId, year } = req.body;
+  if (!shipId || !year) return res.status(400).json({ error: "shipId and year required" });
+
+  const route = await prisma.route.findUnique({ where: { routeId: shipId }});
+  if (!route) return res.status(404).json({ error: "route not found" });
+
+  const cbCurrent = computeCBForRoute(route).complianceBalance_gco2eq;
+
+  const entries = await prisma.bankEntry.findMany({
+    where: { shipId, year },
+    orderBy: { createdAt: "asc" }
+  });
+  const bankTotal = entries.reduce((sum: any, e: { amount: any; }) => sum + e.amount, 0);
+
+  if (cbCurrent >= 0) return res.status(400).json({ error: "Ship has no deficit; nothing to apply" });
+  if (bankTotal <= 0) return res.status(400).json({ error: "No banked surplus available" });
+
+  const deficit = Math.abs(cbCurrent);
+  const applyAmount = Math.min(bankTotal, deficit);
+
+  // Store the application as a negative entry to reduce bank
+  await prisma.bankEntry.create({
+    data: { shipId, year, amount: -applyAmount }
+  });
+
+  const cbAfter = cbCurrent + applyAmount;
+
+  res.json({
+    shipId,
+    year,
+    cb_before_g: cbCurrent,
+    applied_g: applyAmount,
+    cb_after_g: cbAfter,
+    remaining_bank_g: bankTotal - applyAmount
+  });
+});
+
+
 export default router;
