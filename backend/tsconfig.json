@@ -1,47 +1,32 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
     "rootDir": "src",
     "outDir": "dist",
 
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
-    "target": "esnext",
-    "types": [],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
+    // ESM + Node
+    "module": "ESNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2020",
 
-    // Other Outputs
+    // Node Types
+    "lib": ["ES2020"],
+    "types": ["node"],
+    "resolveJsonModule": true,
+
+    // Interop
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": false,
+
+    // Build Output
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
 
-    // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
-
-    // Recommended Options
+    // Strictness
     "strict": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
-
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-  }
+    "skipLibCheck": true
+  },
+  "include": ["src", "prisma"]
 }
