@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import RoutesTab from "./tabs/RoutesTab";
 import CompareTab from "./tabs/CompareTab";
 import BankingTab from "./tabs/BankingTab";
@@ -11,7 +11,7 @@ function Placeholder({label}:{label:string}) {
 export default function App(){
   const [tab, setTab] = useState<"routes"|"compare"|"banking"|"pooling">("routes");
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen ">
       <header className="border-b p-4 flex gap-2">
         {["routes","compare","banking","pooling"].map(t => (
           <button key={t}

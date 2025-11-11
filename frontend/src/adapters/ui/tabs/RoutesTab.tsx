@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../infrastructure/api";
 import type { Route } from "../../../core/domain/types";
 import {
@@ -65,18 +65,35 @@ export default function RoutesTab() {
     }
   };
 
-  const filtered = routes.filter((rt) => {
-    if (filters.vesselType !== "all" && rt.vesselType !== filters.vesselType)
-      return false;
-    if (filters.fuelType !== "all" && rt.fuelType !== filters.fuelType)
-      return false;
-    if (filters.year !== "all" && String(rt.year) !== filters.year)
-      return false;
-    return true;
-  });
+  const filtered = useMemo(
+    () =>
+      routes.filter((rt) => {
+        if (
+          filters.vesselType !== "all" &&
+          rt.vesselType !== filters.vesselType
+        )
+          return false;
+        if (filters.fuelType !== "all" && rt.fuelType !== filters.fuelType)
+          return false;
+        if (filters.year !== "all" && String(rt.year) !== filters.year)
+          return false;
+        return true;
+      }),
+    [routes, filters]
+  );
 
-  const unique = (k: keyof Route) =>
-    Array.from(new Set(routes.map((r) => String(r[k])))).sort();
+  const uniqueVesselTypes = useMemo(
+    () => Array.from(new Set(routes.map((r) => r.vesselType))).sort(),
+    [routes]
+  );
+  const uniqueFuelTypes = useMemo(
+    () => Array.from(new Set(routes.map((r) => r.fuelType))).sort(),
+    [routes]
+  );
+  const uniqueYears = useMemo(
+    () => Array.from(new Set(routes.map((r) => String(r.year)))).sort(),
+    [routes]
+  );
 
   const columns: ColumnDef<Route>[] = [
     {
@@ -190,7 +207,7 @@ export default function RoutesTab() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All vessel types</SelectItem>
-              {unique("vesselType").map((v) => (
+              {uniqueVesselTypes.map((v) => (
                 <SelectItem key={v} value={v}>
                   {v}
                 </SelectItem>
@@ -208,7 +225,7 @@ export default function RoutesTab() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All fuels</SelectItem>
-              {unique("fuelType").map((v) => (
+              {uniqueFuelTypes.map((v) => (
                 <SelectItem key={v} value={v}>
                   {v}
                 </SelectItem>
@@ -224,7 +241,7 @@ export default function RoutesTab() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All years</SelectItem>
-              {unique("year").map((v) => (
+              {uniqueYears.map((v) => (
                 <SelectItem key={v} value={v}>
                   {v}
                 </SelectItem>
