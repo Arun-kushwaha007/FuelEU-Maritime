@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "../../infrastructure/api";
 import {
   Card,
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
-export default function BankingTab() {
+export default function BankingTab({ setSidebarProps }: { setSidebarProps: (props: any) => void }) {
   const [shipId, setShipId] = useState("R001");
   const [year, setYear] = useState("2024");
 
@@ -44,6 +44,13 @@ export default function BankingTab() {
     await api.post("/banking/apply", { shipId, year: Number(year) });
     await fetchCB();
   };
+
+  useEffect(() => {
+    setSidebarProps({
+      currentCB_g: cb?.complianceBalance_gco2eq,
+      bankAvailable_g: bankData?.totalBanked,
+    });
+  }, [cb, bankData, setSidebarProps]);
 
   return (
     <Card>

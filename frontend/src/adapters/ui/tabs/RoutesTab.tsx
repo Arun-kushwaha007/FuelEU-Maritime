@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/table";
 import { ArrowUpDown } from "lucide-react";
 
-export default function RoutesTab() {
+export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props: any) => void }) {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [filters, setFilters] = useState({
     vesselType: "all",
@@ -55,6 +55,14 @@ export default function RoutesTab() {
   useEffect(() => {
     fetchRoutes();
   }, []);
+
+  useEffect(() => {
+    const baseline = routes.find(r => r.isBaseline);
+    setSidebarProps({
+      baselineRouteId: baseline?.routeId,
+      baselineGhgIntensity: baseline?.ghgIntensity,
+    });
+  }, [routes, setSidebarProps]);
 
   const setBaseline = async (routeId: string) => {
     try {

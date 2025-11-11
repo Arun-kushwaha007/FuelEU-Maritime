@@ -37,7 +37,8 @@ describe('CompareTab', () => {
   });
 
   it('should render the component and display comparison data', async () => {
-    render(<CompareTab />);
+    const setSidebarProps = vi.fn();
+    render(<CompareTab setSidebarProps={setSidebarProps} />);
 
     await waitFor(() => {
       expect(screen.getByText('R001')).toBeInTheDocument();

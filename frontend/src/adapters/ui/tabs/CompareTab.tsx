@@ -36,7 +36,7 @@ type ComparisonRow = {
   compliant: boolean;
 };
 
-export default function CompareTab() {
+export default function CompareTab({ setSidebarProps }: { setSidebarProps: (props: any) => void }) {
   const [baseline, setBaseline] = useState<Route | null>(null);
   const [rows, setRows] = useState<ComparisonRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +52,12 @@ export default function CompareTab() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    setSidebarProps({
+      compareRows: rows,
+    });
+  }, [rows, setSidebarProps]);
 
   if (loading || !baseline) return <div className="p-4">Loading…</div>;
 

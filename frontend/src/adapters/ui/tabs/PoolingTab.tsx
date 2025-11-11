@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api } from "../../infrastructure/api";
 import {
   Card,
@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 
 type Member = { shipId: string; cb_before_g: number };
 
-export default function PoolingTab() {
+export default function PoolingTab({ setSidebarProps }: { setSidebarProps: (props: any) => void }) {
   const [year, setYear] = useState("2024");
   const [members, setMembers] = useState<Member[]>([]);
   const [selected, setSelected] = useState<{ [shipId: string]: boolean }>({});
@@ -36,7 +36,11 @@ export default function PoolingTab() {
 
   const fetchAdjusted = async () => {
     const res = await api.get(`/compliance/adjusted-cb?year=${year}`);
-    setMembers(res.data);
+    const normalized = res.data.map((m: any) => ({
+      shipId: m.shipId,
+      cb_before_g: Number(m.cb_before_g),
+    }));
+    setMembers(normalized);
     setSelected({});
     setResult(null);
   };
@@ -45,10 +49,18 @@ export default function PoolingTab() {
     fetchAdjusted();
   }, [year]);
 
-  const selectedMembers = members.filter((m) => selected[m.shipId]);
+  const selectedMembers = useMemo(
+    () => members.filter((m) => selected[m.shipId]),
+    [members, selected]
+  );
+
+  useEffect(() => {
+    setSidebarProps({
+      poolingMembers: selectedMembers,
+    });
+  }, [selectedMembers, setSidebarProps]);
 
   const poolSum = selectedMembers.reduce((sum, m) => sum + m.cb_before_g, 0);
-
   const isValidPool = selectedMembers.length >= 2 && poolSum >= 0;
 
   const createPool = async () => {
@@ -68,9 +80,7 @@ export default function PoolingTab() {
       <Card className="col-span-2">
         <CardHeader>
           <CardTitle>Pooling</CardTitle>
-          <CardDescription>
-            Create and manage compliance pools.
-          </CardDescription>
+          <CardDescription>Create and manage compliance pools.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-4">
@@ -88,6 +98,7 @@ export default function PoolingTab() {
             </Select>
             <Button onClick={fetchAdjusted}>Refresh</Button>
           </div>
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -103,11 +114,8 @@ export default function PoolingTab() {
                   <TableCell>
                     <Checkbox
                       checked={!!selected[m.shipId]}
-                      onCheckedChange={(checked: boolean) =>
-                        setSelected((s) => ({
-                          ...s,
-                          [m.shipId]: checked as boolean,
-                        }))
+                      onCheckedChange={(checked) =>
+                        setSelected((s) => ({ ...s, [m.shipId]: Boolean(checked) }))
                       }
                     />
                   </TableCell>
@@ -120,6 +128,7 @@ export default function PoolingTab() {
           </Table>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Pool Summary</CardTitle>
@@ -131,15 +140,12 @@ export default function PoolingTab() {
           <Badge variant={poolSum >= 0 ? "default" : "destructive"}>
             {poolSum >= 0 ? "Valid pool (≥ 0)" : "Invalid pool (sum < 0)"}
           </Badge>
-          <Button
-            className="mt-4"
-            disabled={!isValidPool}
-            onClick={createPool}
-          >
+          <Button className="mt-4" disabled={!isValidPool} onClick={createPool}>
             Create Pool
           </Button>
         </CardContent>
       </Card>
+
       {result && (
         <Card>
           <CardHeader>
@@ -155,11 +161,11 @@ export default function PoolingTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {result.members.map((m: any) => (
+                {result.members?.map((m: any) => (
                   <TableRow key={m.shipId}>
                     <TableCell>{m.shipId}</TableCell>
-                    <TableCell>{(m.cb_before / 1e6).toFixed(3)}</TableCell>
-                    <TableCell>{(m.cb_after / 1e6).toFixed(3)}</TableCell>
+                    <TableCell>{(Number(m.cb_before) / 1e6).toFixed(3)}</TableCell>
+                    <TableCell>{(Number(m.cb_after) / 1e6).toFixed(3)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

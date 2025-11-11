@@ -20,7 +20,8 @@ describe('PoolingTab', () => {
   });
 
   it('should render the component and display pool members', async () => {
-    render(<PoolingTab />);
+    const setSidebarProps = vi.fn();
+    render(<PoolingTab setSidebarProps={setSidebarProps} />);
 
     await waitFor(() => {
       expect(screen.getByText('R001')).toBeInTheDocument();
@@ -29,7 +30,8 @@ describe('PoolingTab', () => {
   });
 
   it('should enable the "Create Pool" button when a valid pool is selected', async () => {
-    render(<PoolingTab />);
+    const setSidebarProps = vi.fn();
+    render(<PoolingTab setSidebarProps={setSidebarProps} />);
 
     await waitFor(() => {
       const checkboxes = screen.getAllByRole('checkbox');

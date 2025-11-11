@@ -23,7 +23,8 @@ describe('BankingTab', () => {
   });
 
   it('should render the component and display data after fetching', async () => {
-    render(<BankingTab />);
+    const setSidebarProps = vi.fn();
+    render(<BankingTab setSidebarProps={setSidebarProps} />);
 
     fireEvent.click(screen.getByText('Fetch CB + Bank Data'));
 
@@ -32,7 +33,8 @@ describe('BankingTab', () => {
   });
 
   it('should call the bank surplus endpoint when the "Bank Surplus" button is clicked', async () => {
-    render(<BankingTab />);
+    const setSidebarProps = vi.fn();
+    render(<BankingTab setSidebarProps={setSidebarProps} />);
 
     fireEvent.click(screen.getByText('Fetch CB + Bank Data'));
 

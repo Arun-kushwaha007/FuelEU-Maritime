@@ -40,7 +40,8 @@ describe('RoutesTab', () => {
   });
 
   it('should render the component and display routes', async () => {
-    render(<RoutesTab />);
+    const setSidebarProps = vi.fn();
+    render(<RoutesTab setSidebarProps={setSidebarProps} />);
 
     await waitFor(() => {
       expect(screen.getByText('R001')).toBeInTheDocument();
