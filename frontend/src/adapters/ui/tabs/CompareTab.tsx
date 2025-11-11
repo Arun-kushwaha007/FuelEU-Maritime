@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 import {
   Card,
@@ -65,6 +66,7 @@ export default function CompareTab({ setSidebarProps }: { setSidebarProps: (prop
     routeId: r.routeId,
     baseline: baseline.ghgIntensity,
     comparison: r.comparisonIntensity,
+    comparisonColor: r.compliant ? "#10B981" : "#EF4444", // green / red
   }));
 
   return (
@@ -105,6 +107,7 @@ export default function CompareTab({ setSidebarProps }: { setSidebarProps: (prop
           </Table>
         </CardContent>
       </Card>
+
       <Card className="col-span-2">
         <CardHeader>
           <CardTitle>GHG Intensity Chart</CardTitle>
@@ -117,8 +120,16 @@ export default function CompareTab({ setSidebarProps }: { setSidebarProps: (prop
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="baseline" fill="hsl(var(--muted-foreground))" name="Baseline" />
-              <Bar dataKey="comparison" fill="hsl(var(--primary))" name="Comparison" />
+
+              {/* Baseline bars - stable neutral gray */}
+              <Bar dataKey="baseline" name="Baseline" fill="#4B5563" />
+
+              {/* Comparison bars - dynamic color */}
+              <Bar dataKey="comparison" name="Comparison">
+                {chartData.map((entry, index) => (
+                  <Cell key={index} fill={entry.comparisonColor} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

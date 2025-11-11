@@ -21,7 +21,89 @@ The system uses Hexagonal Architecture (Ports and Adapters) to separate business
 This separation allows testing core logic independently and swapping implementations without affecting business rules.
 
 ---
+### System Architecture Diagram
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        Browser["Browser Client"]
+        App["App.tsx<br/>Main Application"]
+        RoutesTab["RoutesTab"]
+        CompareTab["CompareTab"]
+        BankingTab["BankingTab"]
+        PoolingTab["PoolingTab"]
+        Sidebar["KnowledgeSidebar"]
+        API_Client["Axios API Client"]
+    end
+    
+    subgraph "Backend Layer"
+        Express["Express Server<br/>Port 4000"]
+        
+        subgraph "HTTP Adapters"
+            RoutesRouter["Routes API<br/>/api/routes"]
+            ComplianceRouter["Compliance API"]
+            BankingRouter["Banking API"]
+            PoolingRouter["Pooling API"]
+        end
+        
+        subgraph "Core Application Logic"
+            ComputeComparison["computeComparison()"]
+            DomainTypes["Domain Types"]
+        end
+        
+        subgraph "Data Access Layer"
+            PrismaClient["Prisma ORM Client"]
+        end
+    end
+    
+    subgraph "Database Layer"
+        PostgreSQL["PostgreSQL Database"]
+        
+        subgraph "Tables"
+            RouteTable["Route"]
+            ComplianceTable["ShipCompliance"]
+            BankTable["BankEntry"]
+            PoolTable["Pool"]
+            PoolMemberTable["PoolMember"]
+        end
+    end
+    
+    Browser --> App
+    App --> RoutesTab
+    App --> CompareTab
+    App --> BankingTab
+    App --> PoolingTab
+    App --> Sidebar
+    
+    RoutesTab --> API_Client
+    CompareTab --> API_Client
+    BankingTab --> API_Client
+    PoolingTab --> API_Client
+    
+    API_Client -->|"HTTP Requests"| Express
+    
+    Express --> RoutesRouter
+    Express --> ComplianceRouter
+    Express --> BankingRouter
+    Express --> PoolingRouter
+    
+    RoutesRouter --> PrismaClient
+    ComplianceRouter --> PrismaClient
+    BankingRouter --> PrismaClient
+    PoolingRouter --> PrismaClient
+    
+    RoutesRouter --> ComputeComparison
+    ComputeComparison --> DomainTypes
+    
+    PrismaClient --> PostgreSQL
+    
+    PostgreSQL --> RouteTable
+    PostgreSQL --> ComplianceTable
+    PostgreSQL --> BankTable
+    PostgreSQL --> PoolTable
+    PostgreSQL --> PoolMemberTable
+```
 
+---
 ### Directory Structure
 
 ```
@@ -328,14 +410,18 @@ Create compliance pool with greedy redistribution algorithm.
 ---
 
 ## Screenshots
-
-*Placeholder: Routes tab showing vessel data and baseline selection*
-
-*Placeholder: Compare tab with baseline vs comparison chart*
-
-*Placeholder: Banking tab with CB calculation and banking actions*
-
-*Placeholder: Pooling tab with member selection and pool creation*
+### Routes
+![Routes](assets/routes.png)
+Routes tab showing vessel data and baseline selection
+### Compare Tab
+![Routes](assets/compare.png)
+Compare tab with baseline vs comparison chart
+### Banking Tab
+![Routes](assets/banking.png)
+Banking tab with CB calculation and banking actions
+### Pooling Tab
+![Routes](assets/pooling.png)
+Pooling tab with member selection and pool creation
 
 ---
 
