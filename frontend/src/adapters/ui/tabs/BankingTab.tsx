@@ -1,5 +1,20 @@
 import React, { useState } from "react";
 import { api } from "../../infrastructure/api";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 export default function BankingTab() {
   const [shipId, setShipId] = useState("R001");
@@ -13,7 +28,9 @@ export default function BankingTab() {
     setLoading(true);
     const res = await api.get(`/compliance/cb?routeId=${shipId}`);
     setCb(res.data);
-    const bankRes = await api.get(`/banking/records?shipId=${shipId}&year=${year}`);
+    const bankRes = await api.get(
+      `/banking/records?shipId=${shipId}&year=${year}`
+    );
     setBankData(bankRes.data);
     setLoading(false);
   };
@@ -29,56 +46,94 @@ export default function BankingTab() {
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <h2 className="text-xl font-semibold">Banking</h2>
-
-      <div className="flex gap-2">
-        <select className="border p-2" value={shipId} onChange={e=>setShipId(e.target.value)}>
-          {["R001","R002","R003","R004","R005"].map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-        <select className="border p-2" value={year} onChange={e=>setYear(e.target.value)}>
-          {["2024","2025"].map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <button className="bg-black text-white px-3 py-2 rounded" onClick={fetchCB}>
-          Fetch CB + Bank Data
-        </button>
-      </div>
-
-      {loading && <div>Loading…</div>}
-
-      {cb && (
-        <div className="border p-4 rounded bg-white">
-          <p><b>CB (grams):</b> {cb.complianceBalance_gco2eq.toFixed(0)}</p>
-          <p><b>CB (tonnes):</b> {(cb.complianceBalance_gco2eq/1e6).toFixed(3)} tCO₂e</p>
+    <Card>
+      <CardHeader>
+        <CardTitle>Banking</CardTitle>
+        <CardDescription>
+          Manage your compliance balance and banked allowances.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-2 mb-4">
+          <Select value={shipId} onValueChange={setShipId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select ship" />
+            </SelectTrigger>
+            <SelectContent>
+              {["R001", "R002", "R003", "R004", "R005"].map((r) => (
+                <SelectItem key={r} value={r}>
+                  {r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={year} onValueChange={setYear}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select year" />
+            </SelectTrigger>
+            <SelectContent>
+              {["2024", "2025"].map((y) => (
+                <SelectItem key={y} value={y}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={fetchCB}>Fetch CB + Bank Data</Button>
         </div>
-      )}
 
-     {bankData && (
-       <div className="border p-4 rounded bg-white space-y-2">
-         <p>
-           <b>Total Banked:</b>{" "}
-           {((bankData.totalBanked ?? 0)).toFixed(0)} gCO₂e (
-           {((bankData.totalBanked ?? 0) / 1e6).toFixed(3)} t)
-         </p>
-     
-         <button
-           className="px-3 py-2 rounded bg-emerald-600 text-white disabled:opacity-40"
-           disabled={!cb || cb.complianceBalance_gco2eq <= 0}
-           onClick={bankSurplus}
-         >
-           Bank Surplus
-         </button>
-     
-         <button
-           className="px-3 py-2 rounded bg-indigo-600 text-white disabled:opacity-40"
-           disabled={!cb || cb.complianceBalance_gco2eq >= 0 || (bankData.totalBanked ?? 0) <= 0}
-           onClick={applyBank}
-         >
-           Apply Bank to Deficit
-         </button>
-       </div>
-     )}
-     
-    </div>
+        {loading && <div>Loading…</div>}
+
+        {cb && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Compliance Balance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>
+                <b>CB (grams):</b> {cb.complianceBalance_gco2eq.toFixed(0)}
+              </p>
+              <p>
+                <b>CB (tonnes):</b>{" "}
+                {(cb.complianceBalance_gco2eq / 1e6).toFixed(3)} tCO₂e
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {bankData && (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>Bank Data</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>
+                <b>Total Banked:</b>{" "}
+                {(bankData.totalBanked ?? 0).toFixed(0)} gCO₂e (
+                {((bankData.totalBanked ?? 0) / 1e6).toFixed(3)} t)
+              </p>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  disabled={!cb || cb.complianceBalance_gco2eq <= 0}
+                  onClick={bankSurplus}
+                >
+                  Bank Surplus
+                </Button>
+                <Button
+                  disabled={
+                    !cb ||
+                    cb.complianceBalance_gco2eq >= 0 ||
+                    (bankData.totalBanked ?? 0) <= 0
+                  }
+                  onClick={applyBank}
+                >
+                  Apply Bank to Deficit
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </CardContent>
+    </Card>
   );
 }

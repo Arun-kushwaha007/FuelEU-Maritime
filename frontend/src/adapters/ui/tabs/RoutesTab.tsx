@@ -1,11 +1,49 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../../infrastructure/api";
-import type{ Route } from "../../../core/domain/types";
+import type { Route } from "../../../core/domain/types";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ArrowUpDown } from "lucide-react";
 
-export default function RoutesTab(){
+export default function RoutesTab() {
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [filters, setFilters] = useState({ vesselType: "", fuelType: "", year: ""});
+  const [filters, setFilters] = useState({
+    vesselType: "all",
+    fuelType: "all",
+    year: "all",
+  });
   const [loading, setLoading] = useState(false);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const fetchRoutes = async () => {
     setLoading(true);
@@ -14,7 +52,9 @@ export default function RoutesTab(){
     setLoading(false);
   };
 
-  useEffect(() => { fetchRoutes(); }, []);
+  useEffect(() => {
+    fetchRoutes();
+  }, []);
 
   const setBaseline = async (routeId: string) => {
     try {
@@ -25,66 +65,252 @@ export default function RoutesTab(){
     }
   };
 
-  const filtered = routes.filter(rt => {
-    if (filters.vesselType && rt.vesselType !== filters.vesselType) return false;
-    if (filters.fuelType && rt.fuelType !== filters.fuelType) return false;
-    if (filters.year && String(rt.year) !== filters.year) return false;
+  const filtered = routes.filter((rt) => {
+    if (filters.vesselType !== "all" && rt.vesselType !== filters.vesselType)
+      return false;
+    if (filters.fuelType !== "all" && rt.fuelType !== filters.fuelType)
+      return false;
+    if (filters.year !== "all" && String(rt.year) !== filters.year)
+      return false;
     return true;
   });
 
-  const unique = (k: keyof Route) => Array.from(new Set(routes.map(r => String(r[k])))).sort();
+  const unique = (k: keyof Route) =>
+    Array.from(new Set(routes.map((r) => String(r[k])))).sort();
+
+  const columns: ColumnDef<Route>[] = [
+    {
+      accessorKey: "routeId",
+      header: "Route ID",
+    },
+    {
+      accessorKey: "vesselType",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Vessel Type
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+    },
+    {
+      accessorKey: "fuelType",
+      header: "Fuel Type",
+    },
+    {
+      accessorKey: "year",
+      header: "Year",
+    },
+    {
+      accessorKey: "ghgIntensity",
+      header: "GHG Intensity",
+    },
+    {
+      accessorKey: "fuelConsumption_t",
+      header: "Fuel Consumption (t)",
+    },
+    {
+      accessorKey: "distance_km",
+      header: "Distance (km)",
+    },
+    {
+      accessorKey: "totalEmissions_t",
+      header: "Total Emissions (t)",
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const route = row.original;
+        return (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setBaseline(route.routeId)}
+            >
+              Set Baseline
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                const res = await api.get(
+                  `/compliance/cb?routeId=${route.routeId}`
+                );
+                const cb = res.data;
+                alert(
+                  `CB for ${route.routeId}: ${(
+                    cb.complianceBalance_gco2eq / 1e6
+                  ).toFixed(3)} tCO2e`
+                );
+              }}
+            >
+              CB
+            </Button>
+          </>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data: filtered,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    state: {
+      sorting,
+    },
+  });
 
   return (
-    <div className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <select className="border p-2" value={filters.vesselType} onChange={e=>setFilters(s=>({...s, vesselType:e.target.value}))}>
-          <option value="">All vessel types</option>
-          {unique("vesselType").map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
-        <select className="border p-2" value={filters.fuelType} onChange={e=>setFilters(s=>({...s, fuelType:e.target.value}))}>
-          <option value="">All fuels</option>
-          {unique("fuelType").map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
-        <select className="border p-2" value={filters.year} onChange={e=>setFilters(s=>({...s, year:e.target.value}))}>
-          <option value="">All years</option>
-          {unique("year").map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
-        <button className="ml-auto bg-gray-900 text-white px-3 py-2 rounded" onClick={fetchRoutes}>Refresh</button>
-      </div>
-
-      {loading ? <div>Loading…</div> : (
-        <table className="w-full text-sm border-collapse">
-          <thead className="bg-gray-100">
-            <tr>
-              {["routeId","vesselType","fuelType","year","ghgIntensity","fuelConsumption (t)","distance (km)","totalEmissions (t)","actions"].map(h=>
-                <th key={h} className="p-2 text-left">{h}</th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(r=>(
-              <tr key={r.routeId} className="border-b">
-                <td className="p-2">{r.routeId}</td>
-                <td className="p-2">{r.vesselType}</td>
-                <td className="p-2">{r.fuelType}</td>
-                <td className="p-2">{r.year}</td>
-                <td className="p-2">{r.ghgIntensity}</td>
-                <td className="p-2">{r.fuelConsumption_t}</td>
-                <td className="p-2">{r.distance_km}</td>
-                <td className="p-2">{r.totalEmissions_t}</td>
-                <td className="p-2">
-                  <button className="px-2 py-1 bg-blue-600 text-white rounded mr-2" onClick={()=>setBaseline(r.routeId)}>Set Baseline</button>
-                  <button className="px-2 py-1 bg-gray-200" onClick={async ()=>{
-                    const res = await api.get(`/compliance/cb?routeId=${r.routeId}`);
-                    const cb = res.data;
-                    alert(`CB for ${r.routeId}: ${(cb.complianceBalance_gco2eq/1e6).toFixed(3)} tCO2e`);
-                  }}>CB</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Routes</CardTitle>
+        <CardDescription>
+          Browse and manage your shipping routes.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-2 mb-4">
+          <Select
+            value={filters.vesselType}
+            onValueChange={(value: any) =>
+              setFilters((s) => ({ ...s, vesselType: value }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All vessel types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All vessel types</SelectItem>
+              {unique("vesselType").map((v) => (
+                <SelectItem key={v} value={v}>
+                  {v}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.fuelType}
+            onValueChange={(value: any) =>
+              setFilters((s) => ({ ...s, fuelType: value }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All fuels" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All fuels</SelectItem>
+              {unique("fuelType").map((v) => (
+                <SelectItem key={v} value={v}>
+                  {v}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.year}
+            onValueChange={(value: any) => setFilters((s) => ({ ...s, year: value }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All years" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All years</SelectItem>
+              {unique("year").map((v) => (
+                <SelectItem key={v} value={v}>
+                  {v}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button className="ml-auto" onClick={fetchRoutes}>
+            Refresh
+          </Button>
+        </div>
+        {loading ? (
+          <div>Loading…</div>
+        ) : (
+          <>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        return (
+                          <TableHead key={header.id}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </TableHead>
+                          
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && "selected"}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={columns.length}
+                        className="h-24 text-center"
+                      >
+                        No results.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex items-center justify-end space-x-2 py-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                Next
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,35 +1,28 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import Layout from "./components/Layout";
+import RoutesTab from "./adapters/ui/tabs/RoutesTab";
+import CompareTab from "./adapters/ui/tabs/CompareTab";
+import PoolingTab from "./adapters/ui/tabs/PoolingTab";
+import BankingTab from "./adapters/ui/tabs/BankingTab";
+import Tabs from "./components/Tabs";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const tabs = [
+    { name: "Routes", content: <RoutesTab /> },
+    { name: "Compare", content: <CompareTab /> },
+    { name: "Pooling", content: <PoolingTab /> },
+    { name: "Banking", content: <BankingTab /> },
+  ];
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <Layout>
+      {/* Container that centers and constrains the width */}
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div className="w-full max-w-6xl bg-white shadow-md rounded-lg p-6 sm:p-8">
+          <Tabs tabs={tabs} />
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </Layout>
+  );
 }
 
-export default App
+export default App;
