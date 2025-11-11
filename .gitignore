@@ -7,8 +7,8 @@ coverage
 
 agent.md
 
-AGENT_WORKFLOW.md
+# AGENT_WORKFLOW.md
 # README.m
-REFLECTION.md
+# REFLECTION.md
 *.db
 *.log

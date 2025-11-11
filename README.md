@@ -1,91 +1,344 @@
 # FuelEU Maritime Compliance Platform
 
-## Project Overview
+## Overview
 
-This project is a comprehensive platform designed to help maritime companies comply with the FuelEU Maritime regulation. It provides tools for tracking, managing, and optimizing GHG emissions, ensuring compliance with regulatory requirements.
+This platform implements FuelEU Maritime regulation compliance logic for maritime operators. It calculates vessel emissions against regulatory targets, manages compliance balances, and provides mechanisms for banking surplus credits and pooling deficits across multiple vessels.
 
-## Architecture Summary
+**Target Users:** Maritime companies, fleet operators, and compliance officers managing GHG emissions under FuelEU Maritime regulations.
 
-The application is built using a hexagonal architecture (also known as ports and adapters), which separates the core application logic from external concerns such as databases, APIs, and UI components.
+---
 
-### Folder Structure
+## Architecture
 
-*   **Frontend**: Contains the React-based user interface.
-    *   `src/`: Main source code directory.
-        *   `components/`: Reusable UI components.
-        *   `pages/`: Application pages (Routes, Compare, Banking, Pooling).
-        *   `hooks/`: Custom React hooks for API integration.
-*   **Backend**: Contains the Node.js and Express-based server.
-    *   `src/`: Main source code directory.
-        *   `core/`: Core application logic and domain models.
-        *   `adapters/`: Adapters for external services (e.g., database).
-        *   `infrastructure/`: Framework-specific code (e.g., Express routes).
+The system uses Hexagonal Architecture (Ports and Adapters) to separate business logic from external dependencies.
 
-## Tech Stack
+### Why Hexagonal Architecture
 
-*   **Frontend**: React, TypeScript, TailwindCSS, Vite
-*   **Backend**: Node.js, TypeScript, Express, Prisma, PostgreSQL
+- **core/domain**: Pure business logic (CB calculations, pooling algorithms) with no external dependencies
+- **adapters**: Interface implementations (HTTP routes, database queries, UI components)
+- **infrastructure**: Framework-specific code (Express server, Prisma client)
 
-## Setup Instructions
+This separation allows testing core logic independently and swapping implementations without affecting business rules.
+
+---
+
+### Directory Structure
+
+```
+backend/
+├── src/
+│   ├── core/
+│   │   ├── domain/          # Types, constants (TARGET_INTENSITY, MJ_PER_TON)
+│   │   └── application/     # Business logic (computeCB, pooling, comparison)
+│   ├── adapters/
+│   │   └── inbound/http/    # Express routes
+│   └── infrastructure/
+│       ├── db/              # Prisma client
+│       └── server/          # Express app setup
+├── prisma/
+│   └── schema.prisma        # Database schema
+└── tests/                   # Unit and integration tests
+
+frontend/
+├── src/
+│   ├── core/domain/         # Constants, types
+│   ├── adapters/
+│   │   ├── ui/tabs/         # Routes, Compare, Banking, Pooling tabs
+│   │   └── infrastructure/  # API client
+│   └── components/ui/       # Reusable UI components
+└── tests/                   # Component tests
+```
+
+---
+
+## Setup & Run
 
 ### Prerequisites
 
-*   Node.js (v18 or higher)
-*   PostgreSQL
+- Node.js v18+
+- PostgreSQL
+
+---
 
 ### Installation
 
-1.  **Clone the repository**:
-    ```bash
-    git clone <repository-url>
-    ```
-2.  **Install frontend dependencies**:
-    ```bash
-    cd frontend && npm install
-    ```
-3.  **Install backend dependencies**:
-    ```bash
-    cd backend && npm install
-    ```
-4.  **Database setup**:
-    *   Create a PostgreSQL database.
-    *   Copy the `.env.example` file to `.env` in the `backend` directory and update the `DATABASE_URL` with your database connection string.
-5.  **Run database migrations and seeding**:
-    ```bash
-    cd backend && npx prisma migrate dev --name init
-    npx prisma db seed
-    ```
+**1. Clone repository:**
+```bash
+git clone <repository-url>
+```
 
-## Running the Application
+**2. Install backend dependencies:**
+```bash
+cd backend && npm install
+```
 
-*   **Start the backend server**:
-    ```bash
-    cd backend && npm run dev
-    ```
-*   **Start the frontend development server**:
-    ```bash
-    cd frontend && npm run dev
-    ```
-*   The application will be available at `http://localhost:5173`.
+**3. Install frontend dependencies:**
+```bash
+cd frontend && npm install
+```
+
+**4. Configure database:**
+- Create PostgreSQL database
+- Copy `backend/.env.example` to `backend/.env`
+- Update `DATABASE_URL` with connection string
+
+**5. Run migrations and seed data:**
+```bash
+cd backend
+npx prisma migrate dev --name init
+npx prisma db seed
+```
+
+---
+
+### Running the Application
+
+**Start backend (runs on port 4000):**
+```bash
+cd backend && npm run dev
+```
+
+**Start frontend (runs on port 5173):**
+```bash
+cd frontend && npm run dev
+```
+
+---
 
 ## Running Tests
 
-*   **Run backend tests**:
-    ```bash
-    cd backend && npm test
-    ```
-*   **Run frontend tests**:
-    ```bash
-    cd frontend && npm test
-    ```
+**Backend tests:**
+```bash
+cd backend && npm test
+```
 
-## API Documentation
+**Frontend tests:**
+```bash
+cd frontend && npm test
+```
 
-*(This section will be populated with a summary of the available API endpoints)*
+---
 
-## Features Overview
+## Compliance Formulas
 
-*   **Routes**: [Brief description of the Routes tab]
-*   **Compare**: [Brief description of the Compare tab]
-*   **Banking**: [Brief description of the Banking tab]
-*   **Pooling**: [Brief a description of the Pooling tab]
+### Energy Calculation
+
+```
+Energy (MJ) = fuelConsumption_t × 41,000 MJ/t
+```
+
+---
+
+### Compliance Balance (CB)
+
+```
+CB_g = (TARGET_INTENSITY - actualIntensity) × Energy
+CB_t = CB_g / 1,000,000
+```
+
+**Where:**
+- `TARGET_INTENSITY` = 89.3368 gCO₂e/MJ (2025 target)
+- `actualIntensity` = route's GHG intensity (gCO₂e/MJ)
+- Positive CB = surplus (compliant)
+- Negative CB = deficit (non-compliant)
+
+---
+
+### Percentage Difference (Route Comparison)
+
+```
+percentDiff = ((comparisonIntensity / baselineIntensity) - 1) × 100
+compliant = (comparisonIntensity ≤ TARGET_INTENSITY)
+```
+
+---
+
+## API Endpoints
+
+### GET /api/routes
+
+Retrieve all routes.
+
+**Response:**
+```json
+[
+  {
+    "routeId": "R001",
+    "vesselType": "Container",
+    "fuelType": "HFO",
+    "year": 2024,
+    "ghgIntensity": 91.0,
+    "fuelConsumption_t": 5000,
+    "distance_km": 12000,
+    "totalEmissions_t": 4500,
+    "isBaseline": false
+  }
+]
+```
+
+---
+
+### POST /api/routes/:routeId/baseline
+
+Set a route as baseline for comparison.
+
+**Request:**
+```
+POST /api/routes/R001/baseline
+```
+
+**Response:**
+```json
+{
+  "routeId": "R001",
+  "isBaseline": true,
+  ...
+}
+```
+
+---
+
+### GET /api/routes/comparison
+
+Compare all routes against the baseline.
+
+**Response:**
+```json
+{
+  "baseline": { "routeId": "R001", "ghgIntensity": 91.0, ... },
+  "rows": [
+    {
+      "routeId": "R002",
+      "baselineIntensity": 91.0,
+      "comparisonIntensity": 88.0,
+      "percentDiff": -3.30,
+      "compliant": true
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/compliance/cb?routeId=R001
+
+Calculate compliance balance for a route.
+
+**Response:**
+```json
+{
+  "shipId": "R001",
+  "year": 2024,
+  "targetIntensity": 89.3368,
+  "actualIntensity": 91.0,
+  "energy_MJ": 205000000,
+  "complianceBalance_gco2eq": -340956000
+}
+```
+
+---
+
+### POST /api/banking/bank
+
+Bank surplus compliance balance.
+
+**Request:**
+```json
+{
+  "shipId": "R002",
+  "year": 2024
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Banked",
+  "amount_banked": 150000000,
+  "entry": { ... }
+}
+```
+
+---
+
+### POST /api/banking/apply
+
+Apply banked credits to cover deficit.
+
+**Request:**
+```json
+{
+  "shipId": "R001",
+  "year": 2024
+}
+```
+
+**Response:**
+```json
+{
+  "shipId": "R001",
+  "year": 2024,
+  "cb_before_g": -340956000,
+  "applied_g": 150000000,
+  "cb_after_g": -190956000,
+  "remaining_bank_g": 0
+}
+```
+
+---
+
+### POST /api/pools
+
+Create compliance pool with greedy redistribution algorithm.
+
+**Request:**
+```json
+{
+  "year": 2024,
+  "members": [
+    { "shipId": "R001", "cb_before_g": 200000000 },
+    { "shipId": "R002", "cb_before_g": -150000000 }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "poolId": 1,
+  "year": 2024,
+  "members": [
+    { "shipId": "R001", "cb_before": 200000000, "cb_after": 50000000 },
+    { "shipId": "R002", "cb_before": -150000000, "cb_after": 0 }
+  ]
+}
+```
+
+---
+
+## Feature Summary
+
+| Tab | Purpose | Key Actions |
+|-----|---------|-------------|
+| **Routes** | View all vessel routes and set baseline | View routes, filter by vessel/fuel/year, set baseline, calculate CB |
+| **Compare** | Compare routes against baseline | View percentage differences, check compliance status, visualize intensity chart |
+| **Banking** | Manage surplus/deficit over time (Article 20) | Bank surplus CB, apply banked credits to deficits, view banking history |
+| **Pooling** | Redistribute CB across vessels (Article 21) | Select pool members, validate pool sum ≥ 0, create pool with greedy algorithm |
+
+---
+
+## Screenshots
+
+*Placeholder: Routes tab showing vessel data and baseline selection*
+
+*Placeholder: Compare tab with baseline vs comparison chart*
+
+*Placeholder: Banking tab with CB calculation and banking actions*
+
+*Placeholder: Pooling tab with member selection and pool creation*
+
+---
+
+## Notes
+
+The system implements core FuelEU Maritime compliance mechanisms: CB calculation, banking (temporal flexibility), and pooling (collective compliance). All formulas use `TARGET_INTENSITY_2025 = 89.3368 gCO₂e/MJ` and `MJ_PER_TON = 41,000`. The pooling algorithm uses a greedy approach to redistribute surplus to deficits, requiring total pool CB ≥ 0.
