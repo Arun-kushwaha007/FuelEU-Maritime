@@ -10,8 +10,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "test": "NODE_ENV=test jest --runInBand",
-    "test:watch": "NODE_ENV=test jest --watch"
+    "test": "NODE_ENV=test tsx --test --test-reporter=spec --test-reporter-destination=stdout tests/setup.ts tests/**/*.test.ts",
+    "test:watch": "NODE_ENV=test tsx --watch --test --test-reporter=spec --test-reporter-destination=stdout tests/setup.ts tests/**/*.test.ts"
   },
   "keywords": [],
   "author": "",

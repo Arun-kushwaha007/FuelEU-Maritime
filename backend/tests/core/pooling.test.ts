@@ -1,7 +1,6 @@
-// tests/pooling.test.ts
-import test, { describe } from "node:test";
+import { createPoolGreedy } from "../../src/core/application/pooling.js";
+import { describe, test } from "node:test";
 import assert from "node:assert";
-import { createPoolGreedy } from "../../src/core/application/pooling";
 
 describe("pooling", () => {
   test("fails if pool sum < 0", () => {

@@ -1,3 +1,4 @@
+// /backend/src/core/application/pooling.ts
 export type PoolMemberIn = { shipId: string; cb_before_g: number };
 export type PoolMemberOut = { shipId: string; cb_after_g: number };
 

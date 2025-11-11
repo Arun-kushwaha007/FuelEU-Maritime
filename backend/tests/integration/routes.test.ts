@@ -1,6 +1,6 @@
-import test, { describe } from "node:test";
-import assert from "node:assert";
 import request from "supertest";
+import { describe, test } from "node:test";
+import assert from "node:assert";
 
 describe("Routes API", () => {
   test("GET /routes returns seeded data", async () => {
@@ -16,8 +16,9 @@ describe("Routes API", () => {
       .expect(200);
 
     const res = await request("http://localhost:4000").get("/api/routes");
-    const r002 = res.body.find((r: any) => r.routeId === "R002");
+    const r002 = res.body.find((r: { routeId: string; }) => r.routeId === "R002");
 
+    assert.ok(r002, "R002 not found");
     assert.strictEqual(r002.isBaseline, true);
   });
 });

@@ -1,6 +1,6 @@
-import test, { describe } from "node:test";
+import { computeCBForRoute } from "../../src/core/application/computeCB.js";
+import { describe, test } from "node:test";
 import assert from "node:assert";
-import { computeCBForRoute } from "../../src/core/application/computeCB";
 
 describe("computeCBForRoute", () => {
   test("computes CB for R001 correctly", () => {
@@ -19,7 +19,7 @@ describe("computeCBForRoute", () => {
 
     // delta = 89.3368 - 91.0 = -1.6632
     // energy = 5000 * 41000 = 205,000,000 MJ
-    // cb_g = -1.6632 * 205,000,000 ≈ -341,056,000 g
-    assert.strictEqual(Math.round(cb.complianceBalance_gco2eq), -341056000);
+    // cb_g = -1.6632 * 205,000,000 ≈ -340,956,000 g
+    assert.strictEqual(Math.round(cb.complianceBalance_gco2eq), -340956000);
   });
 });

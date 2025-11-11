@@ -1,6 +1,6 @@
-import test, { describe } from "node:test";
-import assert from "node:assert";
 import request from "supertest";
+import { describe, test } from "node:test";
+import assert from "node:assert";
 
 describe("Banking API", () => {
   test("banking workflow", async () => {
@@ -16,6 +16,7 @@ describe("Banking API", () => {
       .expect(200);
 
     assert.ok(bankRes.body.amount_banked !== undefined, "amount_banked missing");
+    assert.ok(bankRes.body.amount_banked > 0, "Expected amount_banked > 0");
 
     // Step 3: get records
     const recRes = await request("http://localhost:4000")

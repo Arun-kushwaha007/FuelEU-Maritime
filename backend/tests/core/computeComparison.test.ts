@@ -1,7 +1,7 @@
 // tests/computeComparison.test.ts
-import test, { describe } from "node:test";
+import { computeComparison } from "../../src/core/application/computeComparison.js";
+import { describe, test } from "node:test";
 import assert from "node:assert";
-import { computeComparison } from "../../src/core/application/computeComparison";
 
 describe("computeComparison", () => {
   test("percent difference and compliance correct", () => {
