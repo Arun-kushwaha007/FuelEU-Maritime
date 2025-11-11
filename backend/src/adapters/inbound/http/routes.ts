@@ -147,4 +147,37 @@ router.post("/banking/apply", async (req, res) => {
 });
 
 
+// GET /compliance/adjusted-cb?year=2024
+router.get("/compliance/adjusted-cb", async (req, res) => {
+  const { year } = req.query;
+  if (!year) return res.status(400).json({ error: "year required" });
+
+  const y = Number(year);
+
+  const routes = await prisma.route.findMany({ where: { year: y }});
+  if (!routes.length) return res.json([]);
+
+  const results = [];
+
+  for (const route of routes) {
+    // Current CB
+    const baseCB = computeCBForRoute(route).complianceBalance_gco2eq;
+
+    // Total banked adjustments from bank_entries
+    const entries = await prisma.bankEntry.findMany({
+      where: { shipId: route.routeId, year: y }
+    });
+    const bankTotal = entries.reduce((sum: any, e: { amount: any; }) => sum + e.amount, 0);
+
+    results.push({
+      shipId: route.routeId,
+      year: y,
+      cb_before_g: baseCB + bankTotal // adjusted CB
+    });
+  }
+
+  res.json(results);
+});
+
+
 export default router;
