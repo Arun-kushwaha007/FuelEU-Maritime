@@ -5,7 +5,7 @@ import BankingTab from "./tabs/BankingTab";
 import PoolingTab from "./tabs/PoolingTab";
 
 function Placeholder({label}:{label:string}) {
-  return <div className="p-4 text-gray-600">{label} — implement next</div>;
+  return <div className="p-4 text-gray-600">{label} </div>;
 }
 
 export default function App(){

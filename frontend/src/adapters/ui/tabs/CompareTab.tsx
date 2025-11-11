@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../infrastructure/api";
 import type { Route } from "../../../core/domain/types";
 import {
