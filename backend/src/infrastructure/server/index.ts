@@ -4,7 +4,6 @@ import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import routes from "../../adapters/inbound/http/routes.js"; 
 
-
 dotenv.config();
 
 export const app = express();

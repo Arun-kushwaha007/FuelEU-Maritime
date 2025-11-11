@@ -1,6 +1,7 @@
 import request from "supertest";
-import { app } from "../../src/adapters/inbound/http/server";
+import { app } from "../../src/infrastructure/server/index.js";
 import test, { describe } from "node:test";
+import assert from "node:assert";
 
 async function getSurplusRoute() {
   const res = await request(app).get("/api/routes");
@@ -16,7 +17,7 @@ async function getSurplusRoute() {
 describe("Banking API", () => {
   test("banking workflow (only for surplus ship)", async () => {
     const target = await getSurplusRoute();
-    expect(target).not.toBeNull();
+    assert.notStrictEqual(target, null, "No surplus route found");
 
     const { shipId, year } = target!;
 
@@ -30,6 +31,10 @@ describe("Banking API", () => {
       .get(`/api/banking/records?shipId=${shipId}&year=${year}`)
       .expect(200);
 
-    expect(recRes.body.totalBanked).toBeGreaterThan(0);
+    // recRes.body.totalBanked should be > 0
+    assert.ok(
+      recRes.body.totalBanked > 0,
+      `Expected totalBanked > 0, got ${recRes.body.totalBanked}`
+    );
   });
 });
