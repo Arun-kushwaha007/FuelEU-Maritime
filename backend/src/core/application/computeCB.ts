@@ -1,4 +1,4 @@
-import { Route, CBResult, MJ_PER_TON } from "../domain/types.js";
+import { Route, CBResult, MJ_PER_TON } from "../domain/types";
 
 export function computeCBForRoute(route: Route, target = 89.3368): CBResult {
   const energyMJ = route.fuelConsumption_t * MJ_PER_TON;

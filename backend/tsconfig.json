@@ -5,13 +5,15 @@
     "outDir": "dist",
 
     // ESM + Node
-    "module": "ESNext",
-    "moduleResolution": "NodeNext",
-    "target": "ES2020",
+    // "module": "ESNext",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "es2019",
+    
 
     // Node Types
     "lib": ["ES2020"],
-    "types": ["node"],
+    "types": ["node", "jest"],
     "resolveJsonModule": true,
 
     // Interop
@@ -26,7 +28,15 @@
 
     // Strictness
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    
+    // "esModuleInterop": true,
+    
+    // "resolveJsonModule": true,
+    // "allowSyntheticDefaultImports": true
+    
+
+    
   },
   "include": ["src", "prisma"]
 }
