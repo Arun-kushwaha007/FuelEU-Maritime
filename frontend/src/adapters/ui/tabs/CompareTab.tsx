@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import useMedia from "use-media";
 
 type ComparisonRow = {
   routeId: string;
@@ -37,10 +38,15 @@ type ComparisonRow = {
   compliant: boolean;
 };
 
-export default function CompareTab({ setSidebarProps }: { setSidebarProps: (props: any) => void }) {
+export default function CompareTab({
+  setSidebarProps,
+}: {
+  setSidebarProps: (props: any) => void;
+}) {
   const [baseline, setBaseline] = useState<Route | null>(null);
   const [rows, setRows] = useState<ComparisonRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const isMobile = useMedia({ maxWidth: "640px" });
 
   const fetchData = async () => {
     setLoading(true);
@@ -79,32 +85,59 @@ export default function CompareTab({ setSidebarProps }: { setSidebarProps: (prop
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Route</TableHead>
-                <TableHead>Baseline Intensity</TableHead>
-                <TableHead>Comparison Intensity</TableHead>
-                <TableHead>% Difference</TableHead>
-                <TableHead>Compliant</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          {isMobile ? (
+            <div className="grid gap-4">
               {rows.map((r) => (
-                <TableRow key={r.routeId}>
-                  <TableCell>{r.routeId}</TableCell>
-                  <TableCell>{r.baselineIntensity.toFixed(3)}</TableCell>
-                  <TableCell>{r.comparisonIntensity.toFixed(3)}</TableCell>
-                  <TableCell>{r.percentDiff.toFixed(2)}%</TableCell>
-                  <TableCell>
-                    <Badge variant={r.compliant ? "default" : "destructive"}>
-                      {r.compliant ? "Yes" : "No"}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
+                <Card key={r.routeId}>
+                  <CardHeader>
+                    <CardTitle>{r.routeId}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div>
+                      Baseline Intensity: {r.baselineIntensity.toFixed(3)}
+                    </div>
+                    <div>
+                      Comparison Intensity: {r.comparisonIntensity.toFixed(3)}
+                    </div>
+                    <div>% Difference: {r.percentDiff.toFixed(2)}%</div>
+                    <div>
+                      Compliant:{" "}
+                      <Badge variant={r.compliant ? "default" : "destructive"}>
+                        {r.compliant ? "Yes" : "No"}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Route</TableHead>
+                  <TableHead>Baseline Intensity</TableHead>
+                  <TableHead>Comparison Intensity</TableHead>
+                  <TableHead>% Difference</TableHead>
+                  <TableHead>Compliant</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => (
+                  <TableRow key={r.routeId}>
+                    <TableCell>{r.routeId}</TableCell>
+                    <TableCell>{r.baselineIntensity.toFixed(3)}</TableCell>
+                    <TableCell>{r.comparisonIntensity.toFixed(3)}</TableCell>
+                    <TableCell>{r.percentDiff.toFixed(2)}%</TableCell>
+                    <TableCell>
+                      <Badge variant={r.compliant ? "default" : "destructive"}>
+                        {r.compliant ? "Yes" : "No"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

@@ -8,6 +8,7 @@ import {
   PanelLeft,
   Settings,
   Users2,
+  Menu,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -27,13 +28,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import useMedia from "use-media";
+// import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const isDesktop = useMedia({ minWidth: "768px" });
+  const isDesktop = useMedia({ minWidth: "1024px" });
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(isDesktop);
+
+  React.useEffect(() => {
+    setIsSidebarOpen(isDesktop);
+  }, [isDesktop]);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
+      <aside
+        className={`fixed inset-y-0 left-0 z-10 flex-col border-r bg-background transition-all duration-300 ${
+          isSidebarOpen ? "w-64" : "w-14"
+        } hidden sm:flex`}
+      >
         <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
           <a
             href="#"
@@ -55,51 +66,62 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </a>
         </nav>
       </aside>
-      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+      <div
+        className={`flex flex-col sm:gap-4 sm:py-4 transition-all duration-300 ${
+          isSidebarOpen ? "sm:pl-64" : "sm:pl-14"
+        }`}
+      >
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-          {!isDesktop && (
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button size="icon" variant="outline" className="sm:hidden">
-                  <PanelLeft className="h-5 w-5" />
-                  <span className="sr-only">Toggle Menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="sm:max-w-xs">
-                <nav className="grid gap-6 text-lg font-medium">
-                  <a
-                    href="#"
-                    className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
-                    aria-label="Acme Inc"
-                  >
-                    <Package className="h-4 w-4 transition-all group-hover:scale-110" />
-                    <span className="sr-only">Acme Inc</span>
-                  </a>
-                  <a
-                    href="#"
-                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-                  >
-                    <Home className="h-5 w-5" />
-                    Dashboard
-                  </a>
-                  <a
-                    href="#"
-                    className="flex items-center gap-4 px-2.5 text-foreground"
-                  >
-                    <Users2 className="h-5 w-5" />
-                    Routes
-                  </a>
-                  <a
-                    href="#"
-                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-                  >
-                    <LineChart className="h-5 w-5" />
-                    Compare
-                  </a>
-                </nav>
-              </SheetContent>
-            </Sheet>
-          )}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="outline" className="sm:hidden">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="sm:max-w-xs">
+              <nav className="grid gap-6 text-lg font-medium">
+                <a
+                  href="#"
+                  className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
+                  aria-label="Acme Inc"
+                >
+                  <Package className="h-4 w-4 transition-all group-hover:scale-110" />
+                  <span className="sr-only">Acme Inc</span>
+                </a>
+                <a
+                  href="#"
+                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                >
+                  <Home className="h-5 w-5" />
+                  Dashboard
+                </a>
+                <a
+                  href="#"
+                  className="flex items-center gap-4 px-2.5 text-foreground"
+                >
+                  <Users2 className="h-5 w-5" />
+                  Routes
+                </a>
+                <a
+                  href="#"
+                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                >
+                  <LineChart className="h-5 w-5" />
+                  Compare
+                </a>
+              </nav>
+            </SheetContent>
+          </Sheet>
+          <Button
+            variant="outline"
+            size="icon"
+            className="hidden sm:inline-flex"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            <PanelLeft className="h-5 w-5" />
+            <span className="sr-only">Toggle Menu</span>
+          </Button>
           <Breadcrumb className="hidden md:flex">
             <BreadcrumbList>
               <BreadcrumbItem>

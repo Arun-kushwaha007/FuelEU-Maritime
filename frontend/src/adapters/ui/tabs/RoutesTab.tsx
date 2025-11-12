@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { api } from "../../infrastructure/api";
 import type { Route } from "../../../core/domain/types";
 import {
@@ -34,8 +34,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ArrowUpDown } from "lucide-react";
+import useMedia from "use-media";
 
-export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props: any) => void }) {
+const MemoizedSelect = memo(Select);
+
+export default function RoutesTab({
+  setSidebarProps,
+}: {
+  setSidebarProps: (props: any) => void;
+}) {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [filters, setFilters] = useState({
     vesselType: "all",
@@ -44,6 +51,7 @@ export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props
   });
   const [loading, setLoading] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const isMobile = useMedia({ maxWidth: "640px" });
 
   const fetchRoutes = async () => {
     setLoading(true);
@@ -57,7 +65,7 @@ export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props
   }, []);
 
   useEffect(() => {
-    const baseline = routes.find(r => r.isBaseline);
+    const baseline = routes.find((r) => r.isBaseline);
     setSidebarProps({
       baselineRouteId: baseline?.routeId,
       baselineGhgIntensity: baseline?.ghgIntensity,
@@ -151,7 +159,7 @@ export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props
       cell: ({ row }) => {
         const route = row.original;
         return (
-          <>
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -176,7 +184,7 @@ export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props
             >
               CB
             </Button>
-          </>
+          </div>
         );
       },
     },
@@ -203,8 +211,8 @@ export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 mb-4">
-          <Select
+        <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
+          <MemoizedSelect
             value={filters.vesselType}
             onValueChange={(value: any) =>
               setFilters((s) => ({ ...s, vesselType: value }))
@@ -221,8 +229,8 @@ export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
-          <Select
+          </MemoizedSelect>
+          <MemoizedSelect
             value={filters.fuelType}
             onValueChange={(value: any) =>
               setFilters((s) => ({ ...s, fuelType: value }))
@@ -239,10 +247,12 @@ export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
-          <Select
+          </MemoizedSelect>
+          <MemoizedSelect
             value={filters.year}
-            onValueChange={(value: any) => setFilters((s) => ({ ...s, year: value }))}
+            onValueChange={(value: any) =>
+              setFilters((s) => ({ ...s, year: value }))
+            }
           >
             <SelectTrigger>
               <SelectValue placeholder="All years" />
@@ -255,7 +265,7 @@ export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </MemoizedSelect>
           <Button className="ml-auto" onClick={fetchRoutes}>
             Refresh
           </Button>
@@ -264,57 +274,87 @@ export default function RoutesTab({ setSidebarProps }: { setSidebarProps: (props
           <div>Loading…</div>
         ) : (
           <>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => {
-                        return (
-                          <TableHead key={header.id}>
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                          </TableHead>
-                          
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && "selected"}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
+            {isMobile ? (
+              <div className="grid gap-4">
+                {table.getRowModel().rows.map((row) => (
+                  <Card key={row.id}>
+                    <CardHeader>
+                      <CardTitle>{row.original.routeId}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div>Vessel Type: {row.original.vesselType}</div>
+                      <div>Fuel Type: {row.original.fuelType}</div>
+                      <div>Year: {row.original.year}</div>
+                      <div>GHG Intensity: {row.original.ghgIntensity}</div>
+                      <div>
+                        Fuel Consumption (t): {row.original.fuelConsumption_t}
+                      </div>
+                      <div>Distance (km): {row.original.distance_km}</div>
+                      <div>
+                        Total Emissions (t): {row.original.totalEmissions_t}
+                      </div>
+                      <div className="mt-4">
+                        {flexRender(
+                          row.getVisibleCells()[8].column.columnDef.cell,
+                          row.getVisibleCells()[8].getContext()
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => {
+                          return (
+                            <TableHead key={header.id}>
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext()
+                                  )}
+                            </TableHead>
+                          );
+                        })}
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        No results.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {table.getRowModel().rows?.length ? (
+                      table.getRowModel().rows.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          data-state={row.getIsSelected() && "selected"}
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id}>
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={columns.length}
+                          className="h-24 text-center"
+                        >
+                          No results.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
             <div className="flex items-center justify-end space-x-2 py-4">
               <Button
                 variant="outline"

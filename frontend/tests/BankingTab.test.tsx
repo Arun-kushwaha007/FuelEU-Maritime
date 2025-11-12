@@ -11,8 +11,8 @@ const mockedApi = api as any;
 describe('BankingTab', () => {
   beforeEach(() => {
     mockedApi.get.mockImplementation((url: string) => {
-      if (url.startsWith('/compliance/cb')) {
-        return Promise.resolve({ data: { complianceBalance_gco2eq: 1000000 } });
+      if (url.startsWith('/compliance/adjusted-cb')) {
+        return Promise.resolve({ data: [{ shipId: 'R001', cb_before_g: 1000000 }] });
       }
       if (url.startsWith('/banking/records')) {
         return Promise.resolve({ data: { totalBanked: 500000 } });

@@ -8,10 +8,16 @@ interface Tab {
 
 interface TabsProps {
   tabs: Tab[];
+  onTabChange: (tab: string) => void;
 }
 
-export default function Tabs({ tabs }: TabsProps) {
+export default function Tabs({ tabs, onTabChange }: TabsProps) {
   const [activeTab, setActiveTab] = useState(0);
+
+  const handleTabClick = (index: number) => {
+    setActiveTab(index);
+    onTabChange(tabs[index].name);
+  };
 
   return (
     <div>
@@ -19,7 +25,7 @@ export default function Tabs({ tabs }: TabsProps) {
         {tabs.map((tab, index) => (
           <Button
             key={tab.name}
-            onClick={() => setActiveTab(index)}
+            onClick={() => handleTabClick(index)}
             variant={activeTab === index ? "default" : "outline"}
           >
             {tab.name}

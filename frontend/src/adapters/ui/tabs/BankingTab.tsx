@@ -16,7 +16,11 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
-export default function BankingTab({ setSidebarProps }: { setSidebarProps: (props: any) => void }) {
+export default function BankingTab({
+  setSidebarProps,
+}: {
+  setSidebarProps: (props: any) => void;
+}) {
   const [shipId, setShipId] = useState("R001");
   const [year, setYear] = useState("2024");
 
@@ -30,9 +34,7 @@ export default function BankingTab({ setSidebarProps }: { setSidebarProps: (prop
     // NB: We fetch the *adjusted* CB here to ensure the UI always reflects
     // the true compliance balance after any banking actions have occurred.
     //
-    const res = await api.get(
-      `/compliance/adjusted-cb?year=${year}`
-    );
+    const res = await api.get(`/compliance/adjusted-cb?year=${year}`);
     const entry = res.data.find((e: any) => e.shipId === shipId);
     setCb({ complianceBalance_gco2eq: entry?.cb_before_g ?? 0 });
 
@@ -50,7 +52,13 @@ export default function BankingTab({ setSidebarProps }: { setSidebarProps: (prop
   };
 
   const applyBank = async () => {
-    if (!cb || cb.complianceBalance_gco2eq >= 0 || !bankData || bankData.totalBanked <= 0) return;
+    if (
+      !cb ||
+      cb.complianceBalance_gco2eq >= 0 ||
+      !bankData ||
+      bankData.totalBanked <= 0
+    )
+      return;
     await api.post("/banking/apply", { shipId, year: Number(year) });
     await fetchCB();
   };
@@ -71,7 +79,7 @@ export default function BankingTab({ setSidebarProps }: { setSidebarProps: (prop
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           <Select value={shipId} onValueChange={setShipId}>
             <SelectTrigger>
               <SelectValue placeholder="Select ship" />
@@ -129,7 +137,7 @@ export default function BankingTab({ setSidebarProps }: { setSidebarProps: (prop
                 {(bankData.totalBanked ?? 0).toFixed(0)} gCO₂e (
                 {((bankData.totalBanked ?? 0) / 1e6).toFixed(3)} t)
               </p>
-              <div className="flex gap-2 mt-4">
+              <div className="flex flex-wrap gap-2 mt-4">
                 <Button
                   disabled={!cb || !bankData || cb.complianceBalance_gco2eq <= 0}
                   onClick={bankSurplus}
