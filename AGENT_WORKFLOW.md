@@ -244,6 +244,157 @@ expect(cb.complianceBalance_gco2eq).toBeCloseTo(-341056000, -2) // 2 decimals to
 
 ---
 
+### Incident F — Hexagonal Architecture Refactoring: Adding Ports & Outbound Adapters
+
+**Symptom:**
+
+Initial implementation had Prisma client directly imported in route handlers, violating hexagonal architecture principles. Assignment specification required:
+- `core/ports/` - Repository interfaces
+- `adapters/outbound/postgres/` - Prisma repository implementations
+- No framework code in core domain
+
+**Root causes:**
+- Misunderstanding of dependency inversion principle
+- Direct coupling between HTTP routes and Prisma ORM
+- Missing abstraction layer between core business logic and database
+
+**Agent contributions:**
+
+DeepWiki (audit): Identified architectural violation during assignment audit. Flagged missing `adapters/outbound/` folder and direct Prisma usage in routes.
+
+ChatGPT (good): Explained ports-and-adapters pattern with concrete examples:
+- Create `Repository` interface in `core/ports/repository.ts`
+- Implement `PrismaRepository` in `adapters/outbound/postgres/repository.ts`
+- Inject repository into route handlers instead of Prisma client
+
+**Effective changes:**
+
+```typescript
+// core/ports/repository.ts
+export interface Repository {
+  getRoutes(): Promise<Route[]>;
+  getRouteById(routeId: string): Promise<Route | null>;
+  getBankEntries(shipId: string, year: number): Promise<BankEntry[]>;
+  // ... other methods
+}
+
+// adapters/outbound/postgres/repository.ts
+export class PrismaRepository implements Repository {
+  private prisma: PrismaClient;
+  
+  constructor() {
+    this.prisma = new PrismaClient();
+  }
+  
+  async getRoutes(): Promise<Route[]> {
+    return this.prisma.route.findMany();
+  }
+  // ... implementations
+}
+
+// adapters/inbound/http/routes.ts
+import { PrismaRepository } from '../../outbound/postgres/repository.js';
+
+const repository = new PrismaRepository();
+// Use repository methods instead of prisma directly
+```
+
+**Final structure:**
+
+```
+backend/src/
+  ├── core/
+  │   ├── domain/          # Types, constants
+  │   ├── application/     # Business logic
+  │   └── ports/           # Repository interfaces ✅ NEW
+  ├── adapters/
+  │   ├── inbound/http/    # Express routes
+  │   └── outbound/postgres/ # Prisma implementations ✅ NEW
+  └── infrastructure/
+      ├── db/              # Prisma client
+      └── server/          # Express app
+```
+
+**What I didn't like:** Initial AI suggestions placed Prisma in infrastructure/ but didn't explain the need for the ports layer. Required multiple iterations to understand that the interface (port) must be in core, while implementation (adapter) wraps the infrastructure.
+
+**Validation steps:**
+- Verified no direct Prisma imports in core/ directory
+- Confirmed route handlers only depend on Repository interface
+- Updated README.md architecture diagram to reflect new structure
+- All tests still passing after refactoring
+
+**Key learning:** Hexagonal architecture isn't just about folder structure—it's about dependency direction. Core defines contracts (ports), adapters implement them. This allows core business logic to remain framework-agnostic.
+
+---
+
+### Incident G — Integration Test Failures: ECONNREFUSED & Database Seeding
+
+**Symptom:**
+
+```
+✖ Banking API (workflows)
+✖ Pooling API (valid pool)
+✖ Routes API (seeded data/baseline)
+Error: ECONNREFUSED: Connection refused
+AssertionError: Expected at least one route
+```
+
+**Root causes:**
+- Integration tests using `request("http://localhost:4000")` expecting running server
+- Tests not using app instance directly with Supertest
+- Empty test database—no seed data loaded before tests
+- Routes mounted under `/api` prefix but tests calling without prefix
+
+**Agent contributions:**
+
+DeepWiki (good): Identified pattern mismatch—tests should use `request(app)` not `request("http://localhost:4000")`. Showed correct pattern from existing core tests.
+
+ChatGPT (good): Provided database seeding solution for `tests/setup.ts`:
+
+```typescript
+before(async () => {
+  await prisma.route.deleteMany({});
+  await prisma.route.createMany({
+    data: [/* 5 KPI routes R001-R005 */]
+  });
+});
+```
+
+**Effective fixes:**
+
+**1. Changed test pattern:**
+```typescript
+// Before (incorrect)
+await request("http://localhost:4000")
+  .get("/compliance/cb?routeId=R002")
+
+// After (correct)
+import { app } from "../../src/infrastructure/server/index.js";
+await request(app)
+  .get("/api/compliance/cb?routeId=R002")  // Added /api prefix
+```
+
+**2. Added database seeding in tests/setup.ts:**
+```typescript
+before(async () => {
+  // Clear and reseed database
+  await prisma.route.deleteMany({});
+  await prisma.route.createMany({ data: kpiRoutes });
+});
+
+after(async () => {
+  await prisma.$disconnect();
+});
+```
+
+**Result:** All integration tests passing. Tests now deterministic and don't require running server.
+
+**What I didn't like:** Multiple iterations needed to identify all issues (ECONNREFUSED → 404 errors → empty database → missing /api prefix). Each fix revealed the next problem.
+
+**Key learning:** Integration tests need proper setup/teardown lifecycle. Database state must be controlled. Supertest can test Express app directly without HTTP server.
+
+---
+
 ## 3) Prompts I Used (Verbatim) + Why They Worked
 
 These are the exact prompts that produced useful results. I kept both the good and the painful ones.

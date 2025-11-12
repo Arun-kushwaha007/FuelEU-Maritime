@@ -20,53 +20,80 @@ The system uses Hexagonal Architecture (Ports and Adapters) to separate business
 
 This separation allows testing core logic independently and swapping implementations without affecting business rules.
 
+### Dependency Inversion via Ports  
+  
+The `core/ports/` directory defines **repository interfaces** that the core application depends on. The `adapters/outbound/postgres/` directory provides **concrete implementations** using Prisma ORM. This ensures:  
+  
+- Core business logic never imports Prisma directly  
+- Database implementation can be swapped without changing core code  
+- Unit tests can mock repositories without database dependencies  
+  **Example flow:**
+  routes.ts (HTTP adapter)
+  → calls core/application/computeCB.ts
+  → uses core/ports/repository.ts interface
+  → implemented by adapters/outbound/postgres/repository.ts
+  → wraps infrastructure/db/client.ts (Prisma)
 ---
 ### System Architecture Diagram
 ```mermaid
 graph TB
     subgraph "Frontend Layer"
-        Browser["Browser Client"]
-        App["App.tsx<br/>Main Application"]
-        RoutesTab["RoutesTab"]
-        CompareTab["CompareTab"]
-        BankingTab["BankingTab"]
-        PoolingTab["PoolingTab"]
-        Sidebar["KnowledgeSidebar"]
-        API_Client["Axios API Client"]
+        Browser["<b>Browser Client</b>"]
+        App["<b>App.tsx</b><br/>Main Application"]
+        RoutesTab["<b>RoutesTab</b>"]
+        CompareTab["<b>CompareTab</b>"]
+        BankingTab["<b>BankingTab</b>"]
+        PoolingTab["<b>PoolingTab</b>"]
+        Sidebar["<b>KnowledgeSidebar</b>"]
+        API_Client["<b>Axios API Client</b>"]
     end
     
-    subgraph "Backend Layer"
-        Express["Express Server<br/>Port 4000"]
+    subgraph "Backend Layer - Hexagonal Architecture"
+        Express["<b>Express Server</b><br/>Port 4000"]
         
-        subgraph "HTTP Adapters"
-            RoutesRouter["Routes API<br/>/api/routes"]
-            ComplianceRouter["Compliance API"]
-            BankingRouter["Banking API"]
-            PoolingRouter["Pooling API"]
+        subgraph "Inbound Adapters"
+            HTTPRoutes["<b>routes.ts</b><br/>/api/routes<br/>/api/compliance<br/>/api/banking<br/>/api/pools"]
         end
         
-        subgraph "Core Application Logic"
-            ComputeComparison["computeComparison()"]
-            DomainTypes["Domain Types"]
+        subgraph "Core Domain"
+            subgraph "Application Services"
+                ComputeCB["<b>computeCBForRoute()</b>"]
+                ComputeComparison["<b>computeComparison()</b>"]
+                Banking["<b>bankSurplus()</b><br/>applyBanked()"]
+                Pooling["<b>createPoolGreedy()</b>"]
+            end
+            
+            subgraph "Domain Layer"
+                DomainTypes["<b>types.ts</b><br/>Route, BankEntry<br/>Pool, ShipCompliance"]
+            end
+            
+            subgraph "Ports (Interfaces)"
+                RepositoryPort["<b>Repository Interface</b><br/>getRoutes()<br/>getBankEntries()<br/>createPool()"]
+            end
         end
         
-        subgraph "Data Access Layer"
-            PrismaClient["Prisma ORM Client"]
+        subgraph "Outbound Adapters"
+            PrismaRepo["<b>PrismaRepository</b><br/>implements Repository"]
+        end
+        
+        subgraph "Infrastructure"
+            PrismaClient["<b>Prisma ORM Client</b>"]
         end
     end
     
     subgraph "Database Layer"
-        PostgreSQL["PostgreSQL Database"]
+        PostgreSQL["<b>PostgreSQL Database</b>"]
         
         subgraph "Tables"
-            RouteTable["Route"]
-            ComplianceTable["ShipCompliance"]
-            BankTable["BankEntry"]
-            PoolTable["Pool"]
-            PoolMemberTable["PoolMember"]
+            RouteTable["<b>routes</b>"]
+            ComplianceTable["<b>ship_compliance</b>"]
+            BankTable["<b>bank_entries</b>"]
+            PoolTable["<b>pools</b>"]
+            PoolMemberTable["<b>pool_members</b>"]
         end
     end
     
+    %% Frontend connections
     Browser --> App
     App --> RoutesTab
     App --> CompareTab
@@ -79,21 +106,29 @@ graph TB
     BankingTab --> API_Client
     PoolingTab --> API_Client
     
-    API_Client -->|"HTTP Requests"| Express
+    API_Client -->|"<b>HTTP Requests</b>"| Express
     
-    Express --> RoutesRouter
-    Express --> ComplianceRouter
-    Express --> BankingRouter
-    Express --> PoolingRouter
+    %% Backend layer connections
+    Express --> HTTPRoutes
     
-    RoutesRouter --> PrismaClient
-    ComplianceRouter --> PrismaClient
-    BankingRouter --> PrismaClient
-    PoolingRouter --> PrismaClient
+    HTTPRoutes --> ComputeCB
+    HTTPRoutes --> ComputeComparison
+    HTTPRoutes --> Banking
+    HTTPRoutes --> Pooling
     
-    RoutesRouter --> ComputeComparison
-    ComputeComparison --> DomainTypes
+    ComputeCB -.uses.-> DomainTypes
+    ComputeComparison -.uses.-> DomainTypes
+    Banking -.uses.-> DomainTypes
+    Pooling -.uses.-> DomainTypes
     
+    Banking --> RepositoryPort
+    Pooling --> RepositoryPort
+    HTTPRoutes --> RepositoryPort
+    
+    RepositoryPort -.implemented by.-> PrismaRepo
+    PrismaRepo --> PrismaClient
+    
+    %% Database connections
     PrismaClient --> PostgreSQL
     
     PostgreSQL --> RouteTable
@@ -101,23 +136,35 @@ graph TB
     PostgreSQL --> BankTable
     PostgreSQL --> PoolTable
     PostgreSQL --> PoolMemberTable
+    
+    %% Styling with better contrast
+    classDef coreStyle fill:#e1f5ff,stroke:#0066cc,stroke-width:3px,color:#000
+    classDef adapterStyle fill:#fff4e6,stroke:#ff9800,stroke-width:3px,color:#000
+    classDef infraStyle fill:#f3e5f5,stroke:#9c27b0,stroke-width:3px,color:#000
+    
+    class ComputeCB,ComputeComparison,Banking,Pooling,DomainTypes,RepositoryPort coreStyle
+    class HTTPRoutes,PrismaRepo adapterStyle
+    class PrismaClient,PostgreSQL infraStyle
 ```
-
 ---
 ### Directory Structure
 
 ```
-backend/src/
-├── core/
-│ ├── domain/ # Types and domain models
-│ ├── application/ # Business logic (computeCB, banking, pooling)
-│ └── ports/ # Repository interfaces
-├── adapters/
-│ ├── inbound/http/ # Express route handlers
-│ └── outbound/postgres/ # Prisma repository implementations
-└── infrastructure/
-├── db/ # Prisma client
-└── server/ # Express app setup
+backend/  
+├── src/  
+│   ├── core/  
+│   │   ├── domain/          # Types, constants (TARGET_INTENSITY, MJ_PER_TON)  
+│   │   ├── application/     # Business logic (computeCB, pooling, comparison, banking)  
+│   │   └── ports/           # Repository interfaces (dependency inversion)  
+│   ├── adapters/  
+│   │   ├── inbound/http/    # Express routes  
+│   │   └── outbound/postgres/ # Prisma repository implementations  
+│   └── infrastructure/  
+│       ├── db/              # Prisma client  
+│       └── server/          # Express app setup  
+├── prisma/  
+│   └── schema.prisma        # Database schema  
+└── tests/                   # Unit and integration tests
 
 frontend/
 ├── src/
