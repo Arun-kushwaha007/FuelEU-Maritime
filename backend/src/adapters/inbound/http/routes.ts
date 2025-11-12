@@ -5,6 +5,7 @@ import { computeComparison } from "../../../core/application/computeComparison.j
 import { createPoolGreedy } from "../../../core/application/pooling.js";
 import { bankSurplus, applyBanked } from "../../../core/application/banking.js";
 import { z } from "zod";
+import { Route } from "../../../core/domain/types.js";
 
 const router = Router();
 const repository = new PrismaRepository();
@@ -21,7 +22,7 @@ router.post("/routes/:routeId/baseline", async (req, res) => {
 
 router.get("/routes/comparison", async (_req, res) => {
   const routes = await repository.getRoutes();
-  const baseline = routes.find((r: { isBaseline: any; }) => r.isBaseline);
+  const baseline = routes.find((r: Route) => r.isBaseline);
   if (!baseline) return res.status(400).json({ error: "No baseline defined" });
   const rows = computeComparison(baseline, routes.filter((r: { routeId: any; })=>r.routeId!==baseline.routeId));
   res.json({ baseline, rows });
