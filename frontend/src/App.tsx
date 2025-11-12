@@ -13,10 +13,18 @@ function App() {
   const isMobile = useMedia({ maxWidth: "640px" });
 
   const tabs = [
-    { name: "Routes", content: <RoutesTab /> },
-    { name: "Compare", content: <CompareTab /> },
-    { name: "Pooling", content: <PoolingTab /> },
-    { name: "Banking", content: <BankingTab /> },
+    { name: "Routes", content: <RoutesTab setSidebarProps={function (props: any): void {
+      throw new Error("Function not implemented.");
+    } } /> },
+    { name: "Compare", content: <CompareTab setSidebarProps={function (props: any): void {
+      throw new Error("Function not implemented.");
+    } } /> },
+    { name: "Pooling", content: <PoolingTab setSidebarProps={function (props: any): void {
+      throw new Error("Function not implemented.");
+    } } /> },
+    { name: "Banking", content: <BankingTab setSidebarProps={function (props: any): void {
+      throw new Error("Function not implemented.");
+    } } /> },
   ];
 
   const onTabChange = (tab: string) => {
