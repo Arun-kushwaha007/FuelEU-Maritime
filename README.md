@@ -107,19 +107,17 @@ graph TB
 ### Directory Structure
 
 ```
-backend/
-├── src/
-│   ├── core/
-│   │   ├── domain/          # Types, constants (TARGET_INTENSITY, MJ_PER_TON)
-│   │   └── application/     # Business logic (computeCB, pooling, comparison)
-│   ├── adapters/
-│   │   └── inbound/http/    # Express routes
-│   └── infrastructure/
-│       ├── db/              # Prisma client
-│       └── server/          # Express app setup
-├── prisma/
-│   └── schema.prisma        # Database schema
-└── tests/                   # Unit and integration tests
+backend/src/
+├── core/
+│ ├── domain/ # Types and domain models
+│ ├── application/ # Business logic (computeCB, banking, pooling)
+│ └── ports/ # Repository interfaces
+├── adapters/
+│ ├── inbound/http/ # Express route handlers
+│ └── outbound/postgres/ # Prisma repository implementations
+└── infrastructure/
+├── db/ # Prisma client
+└── server/ # Express app setup
 
 frontend/
 ├── src/
