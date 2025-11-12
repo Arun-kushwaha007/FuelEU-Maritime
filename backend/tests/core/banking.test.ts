@@ -1,44 +1,67 @@
-import request from "supertest";
-import { app } from "../../src/infrastructure/server/index.js";
-import { describe, test } from "node:test";
+import { test } from "node:test";
 import assert from "node:assert";
+import { bankSurplus, applyBanked } from "../../src/core/application/banking.js";
+import { Repository } from "../../src/core/ports/repository.js";
+import { BankEntry, Pool, Route, ShipCompliance } from "../../src/core/domain/types.js";
 
-async function getSurplusRoute() {
-  const res = await request(app).get("/api/routes");
-  if (!Array.isArray(res.body)) {
-    return null;
+class MockRepository implements Repository {
+  private shipCompliance: ShipCompliance | null = null;
+  private bankEntries: BankEntry[] = [];
+
+  setShipCompliance(compliance: ShipCompliance | null) {
+    this.shipCompliance = compliance;
   }
-  for (const r of res.body) {
-    const cb = await request(app).get(`/api/compliance/cb?routeId=${r.routeId}`);
-    if (cb.body.complianceBalance_gco2eq > 0) {
-      return { shipId: r.routeId, year: r.year };
-    }
+
+  setBankEntries(entries: BankEntry[]) {
+    this.bankEntries = entries;
   }
-  return null;
+
+  getRoutes(): Promise<Route[]> {
+    throw new Error("Method not implemented.");
+  }
+  getRouteById(routeId: string): Promise<Route | null> {
+    throw new Error("Method not implemented.");
+  }
+  updateRoute(routeId: string, data: Partial<Route>): Promise<Route> {
+    throw new Error("Method not implemented.");
+  }
+  updateManyRoutes(where: any, data: Partial<Route>): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  getBankEntries(shipId: string, year: number): Promise<BankEntry[]> {
+    return Promise.resolve(this.bankEntries);
+  }
+  createBankEntry(data: BankEntry): Promise<BankEntry> {
+    this.bankEntries.push(data);
+    return Promise.resolve(data);
+  }
+  getPools(year: number): Promise<Pool[]> {
+    throw new Error("Method not implemented.");
+  }
+  createPool(data: Pool): Promise<Pool> {
+    throw new Error("Method not implemented.");
+  }
+  getShipCompliance(shipId: string, year: number): Promise<ShipCompliance | null> {
+    return Promise.resolve(this.shipCompliance);
+  }
+  createShipCompliance(data: ShipCompliance): Promise<ShipCompliance> {
+    this.shipCompliance = data;
+    return Promise.resolve(data);
+  }
 }
 
-function assertNotNull<T>(val: T, msg?: string): asserts val is NonNullable<T> {
-  assert.notStrictEqual(val, null, msg);
-  assert.notStrictEqual(val, undefined, msg);
-}
+test("bankSurplus", async () => {
+  const repository = new MockRepository();
+  repository.setShipCompliance({ shipId: "R001", year: 2024, cb_gco2eq: 1000 });
 
-describe("Banking API", () => {
-  test("banking workflow (only for surplus ship)", async () => {
-    const target = await getSurplusRoute();
-    assertNotNull(target, "No surplus route found");
+  const result = await bankSurplus(repository, "R001", 2024);
+  assert.strictEqual(result.amount, 1000);
+});
 
-    const { shipId, year } = target;
+test("applyBanked", async () => {
+  const repository = new MockRepository();
+  repository.setBankEntries([{ shipId: "R001", year: 2024, amount: 1000 }]);
 
-    await request(app)
-      .post("/api/banking/bank")
-      .send({ shipId, year })
-      .expect(200);
-
-    const recRes = await request(app)
-      .get(`/api/banking/records?shipId=${shipId}&year=${year}`)
-      .expect(200);
-
-    console.log("recRes.body", recRes.body);
-    assert.ok(recRes.body.totalBanked > 0, "Expected totalBanked > 0");
-  });
+  const result = await applyBanked(repository, "R001", 2024, -500);
+  assert.strictEqual(result.amount, -500);
 });

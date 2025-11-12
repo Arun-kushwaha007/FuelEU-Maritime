@@ -1,28 +1,24 @@
-import { createPoolGreedy } from "../../src/core/application/pooling.js";
-import { describe, test } from "node:test";
+import { test } from "node:test";
 import assert from "node:assert";
+import { createPoolGreedy, PoolMemberIn } from "../../src/core/application/pooling.js";
 
-describe("pooling", () => {
-  test("fails if pool sum < 0", () => {
-    assert.throws(() =>
-      createPoolGreedy([
-        { shipId: "A", cb_before_g: -200 },
-        { shipId: "B", cb_before_g: 100 },
-      ])
-    );
-  });
+test("createPoolGreedy - valid pool", () => {
+  const members: PoolMemberIn[] = [
+    { shipId: "R001", cb_before_g: 1000 },
+    { shipId: "R002", cb_before_g: -500 },
+  ];
 
-  test("redistributes surplus to deficit", () => {
-    const members = [
-      { shipId: "A", cb_before_g: 200 },
-      { shipId: "B", cb_before_g: -150 },
-    ];
+  const result = createPoolGreedy(members);
 
-    const result = createPoolGreedy(members);
-    const A = result.find((r) => r.shipId === "A")!.cb_after_g;
-    const B = result.find((r) => r.shipId === "B")!.cb_after_g;
+  assert.strictEqual(result.find(m => m.shipId === "R001")?.cb_after_g, 500);
+  assert.strictEqual(result.find(m => m.shipId === "R002")?.cb_after_g, 0);
+});
 
-    assert.strictEqual(A, 50); // 200 - 150
-    assert.strictEqual(B, 0);  // -150 + 150
-  });
+test("createPoolGreedy - invalid pool", () => {
+  const members: PoolMemberIn[] = [
+    { shipId: "R001", cb_before_g: 1000 },
+    { shipId: "R002", cb_before_g: -1500 },
+  ];
+
+  assert.throws(() => createPoolGreedy(members), Error, "Pool invalid: total adjusted CB < 0");
 });

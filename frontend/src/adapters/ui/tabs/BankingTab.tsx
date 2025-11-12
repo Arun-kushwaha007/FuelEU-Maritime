@@ -26,8 +26,16 @@ export default function BankingTab({ setSidebarProps }: { setSidebarProps: (prop
 
   const fetchCB = async () => {
     setLoading(true);
-    const res = await api.get(`/compliance/cb?routeId=${shipId}`);
-    setCb(res.data);
+    //
+    // NB: We fetch the *adjusted* CB here to ensure the UI always reflects
+    // the true compliance balance after any banking actions have occurred.
+    //
+    const res = await api.get(
+      `/compliance/adjusted-cb?year=${year}`
+    );
+    const entry = res.data.find((e: any) => e.shipId === shipId);
+    setCb({ complianceBalance_gco2eq: entry?.cb_before_g ?? 0 });
+
     const bankRes = await api.get(
       `/banking/records?shipId=${shipId}&year=${year}`
     );
@@ -36,11 +44,13 @@ export default function BankingTab({ setSidebarProps }: { setSidebarProps: (prop
   };
 
   const bankSurplus = async () => {
+    if (!cb || cb.complianceBalance_gco2eq <= 0) return;
     await api.post("/banking/bank", { shipId, year: Number(year) });
     await fetchCB();
   };
 
   const applyBank = async () => {
+    if (!cb || cb.complianceBalance_gco2eq >= 0 || !bankData || bankData.totalBanked <= 0) return;
     await api.post("/banking/apply", { shipId, year: Number(year) });
     await fetchCB();
   };
@@ -121,7 +131,7 @@ export default function BankingTab({ setSidebarProps }: { setSidebarProps: (prop
               </p>
               <div className="flex gap-2 mt-4">
                 <Button
-                  disabled={!cb || cb.complianceBalance_gco2eq <= 0}
+                  disabled={!cb || !bankData || cb.complianceBalance_gco2eq <= 0}
                   onClick={bankSurplus}
                 >
                   Bank Surplus
@@ -129,6 +139,7 @@ export default function BankingTab({ setSidebarProps }: { setSidebarProps: (prop
                 <Button
                   disabled={
                     !cb ||
+                    !bankData ||
                     cb.complianceBalance_gco2eq >= 0 ||
                     (bankData.totalBanked ?? 0) <= 0
                   }

@@ -1,23 +1,26 @@
 import { Router } from "express";
-import { prisma } from "../../../infrastructure/db/client.js";
+import { PrismaRepository } from "../../outbound/postgres/repository.js";
 import { computeCBForRoute } from "../../../core/application/computeCB.js";
 import { computeComparison } from "../../../core/application/computeComparison.js";
 import { createPoolGreedy } from "../../../core/application/pooling.js";
+import { bankSurplus, applyBanked } from "../../../core/application/banking.js";
+import { z } from "zod";
 
 const router = Router();
+const repository = new PrismaRepository();
 
 // Routes
-router.get("/routes", async (_req, res) => res.json(await prisma.route.findMany()));
+router.get("/routes", async (_req, res) => res.json(await repository.getRoutes()));
 
 router.post("/routes/:routeId/baseline", async (req, res) => {
   const { routeId } = req.params;
-  await prisma.route.updateMany({ where: {}, data: { isBaseline: false } });
-  const updated = await prisma.route.update({ where: { routeId }, data: { isBaseline: true }});
+  await repository.updateManyRoutes({ where: {} }, { isBaseline: false });
+  const updated = await repository.updateRoute(routeId, { isBaseline: true });
   res.json(updated);
 });
 
 router.get("/routes/comparison", async (_req, res) => {
-  const routes = await prisma.route.findMany();
+  const routes = await repository.getRoutes();
   const baseline = routes.find((r: { isBaseline: any; }) => r.isBaseline);
   if (!baseline) return res.status(400).json({ error: "No baseline defined" });
   const rows = computeComparison(baseline, routes.filter((r: { routeId: any; })=>r.routeId!==baseline.routeId));
@@ -25,14 +28,33 @@ router.get("/routes/comparison", async (_req, res) => {
 });
 
 // Compliance
+const complianceQuerySchema = z.object({
+  shipId: z.string().optional(),
+  year: z.coerce.number().int().optional(),
+  routeId: z.string().optional(), // Deprecated
+});
+
 router.get("/compliance/cb", async (req, res) => {
-  const routeId = String(req.query.routeId || "");
-  if (!routeId) return res.status(400).json({ error: "routeId required" });
-  const route = await prisma.route.findUnique({ where: { routeId }});
+  const query = complianceQuerySchema.safeParse(req.query);
+  if (!query.success) return res.status(400).json({ error: query.error });
+
+  const { shipId, year, routeId } = query.data;
+
+  if (routeId) {
+    // Deprecated: a client is using the old routeId param
+    const route = await repository.getRouteById(routeId);
+    if (!route) return res.status(404).json({ error: "route not found" });
+    const target = Number(process.env.TARGET_INTENSITY ?? 89.3368);
+    const cb = computeCBForRoute(route, target);
+    return res.json(cb);
+  }
+
+  if (!shipId || !year) return res.status(400).json({ error: "shipId and year required" });
+
+  const route = await repository.getRouteById(shipId);
   if (!route) return res.status(404).json({ error: "route not found" });
   const target = Number(process.env.TARGET_INTENSITY ?? 89.3368);
-  const cb = computeCBForRoute(route as any, target);
-  await prisma.shipCompliance.create({ data: { shipId: route.routeId, year: route.year, cb_gco2eq: cb.complianceBalance_gco2eq }});
+  const cb = computeCBForRoute(route, target);
   res.json(cb);
 });
 
@@ -40,7 +62,7 @@ router.get("/compliance/cb", async (req, res) => {
 router.get("/banking/records", async (req, res) => {
   const shipId = String(req.query.shipId || "");
   const year = Number(req.query.year);
-  const records = await prisma.bankEntry.findMany({ where: { shipId, year }});
+  const records = await repository.getBankEntries(shipId, year);
   res.json(records);
 });
 
@@ -48,16 +70,13 @@ router.post("/pools", async (req, res) => {
   const { year, members } = req.body as { year: number; members: { shipId: string; cb_before_g: number }[] };
   try {
     const out = createPoolGreedy(members);
-    const pool = await prisma.pool.create({
-      data: {
+    const pool = await repository.createPool({
         year,
-        members: { create: out.map(m => ({
+        members: out.map(m => ({
           shipId: m.shipId,
           cb_before: members.find(x=>x.shipId===m.shipId)!.cb_before_g,
           cb_after: m.cb_after_g
-        })) }
-      },
-      include: { members: true }
+        }))
     });
     res.json(pool);
   } catch (e:any) {
@@ -72,10 +91,7 @@ router.get("/banking/records", async (req, res) => {
   const { shipId, year } = req.query;
   if (!shipId || !year) return res.status(400).json({ error: "shipId and year required" });
 
-  const entries = await prisma.bankEntry.findMany({
-    where: { shipId: String(shipId), year: Number(year) },
-    orderBy: { createdAt: "asc" }
-  });
+  const entries = await repository.getBankEntries(String(shipId), Number(year));
 
   const totalBanked = entries.reduce((sum: any, e: { amount: any; }) => sum + e.amount, 0);
 
@@ -88,22 +104,12 @@ router.post("/banking/bank", async (req, res) => {
   const { shipId, year } = req.body;
   if (!shipId || !year) return res.status(400).json({ error: "shipId and year required" });
 
-  const route = await prisma.route.findUnique({ where: { routeId: shipId }});
-  if (!route) return res.status(404).json({ error: "route not found" });
-
-  const cb = (await prisma.shipCompliance.findFirst({
-    where: { shipId, year },
-    orderBy: { createdAt: "desc" }
-  }))?.cb_gco2eq;
-
-  if (!cb) return res.status(400).json({ error: "Run CB first via /compliance/cb" });
-  if (cb <= 0) return res.status(400).json({ error: "CB is not positive; cannot bank" });
-
-  const entry = await prisma.bankEntry.create({
-    data: { shipId, year, amount: cb }
-  });
-
-  res.json({ message: "Banked", amount_banked: cb, entry });
+  try {
+    const entry = await bankSurplus(repository, shipId, year);
+    res.json({ message: "Banked", amount_banked: entry.amount, entry });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 
@@ -112,38 +118,27 @@ router.post("/banking/apply", async (req, res) => {
   const { shipId, year } = req.body;
   if (!shipId || !year) return res.status(400).json({ error: "shipId and year required" });
 
-  const route = await prisma.route.findUnique({ where: { routeId: shipId }});
-  if (!route) return res.status(404).json({ error: "route not found" });
+  try {
+    const route = await repository.getRouteById(shipId);
+    if (!route) return res.status(404).json({ error: "route not found" });
 
-  const cbCurrent = computeCBForRoute(route).complianceBalance_gco2eq;
+    const cbCurrent = computeCBForRoute(route).complianceBalance_gco2eq;
+    const entry = await applyBanked(repository, shipId, year, cbCurrent);
 
-  const entries = await prisma.bankEntry.findMany({
-    where: { shipId, year },
-    orderBy: { createdAt: "asc" }
-  });
-  const bankTotal = entries.reduce((sum: any, e: { amount: any; }) => sum + e.amount, 0);
+    const entries = await repository.getBankEntries(shipId, year);
+    const bankTotal = entries.reduce((sum, e) => sum + e.amount, 0);
 
-  if (cbCurrent >= 0) return res.status(400).json({ error: "Ship has no deficit; nothing to apply" });
-  if (bankTotal <= 0) return res.status(400).json({ error: "No banked surplus available" });
-
-  const deficit = Math.abs(cbCurrent);
-  const applyAmount = Math.min(bankTotal, deficit);
-
-  // Store the application as a negative entry to reduce bank
-  await prisma.bankEntry.create({
-    data: { shipId, year, amount: -applyAmount }
-  });
-
-  const cbAfter = cbCurrent + applyAmount;
-
-  res.json({
-    shipId,
-    year,
-    cb_before_g: cbCurrent,
-    applied_g: applyAmount,
-    cb_after_g: cbAfter,
-    remaining_bank_g: bankTotal - applyAmount
-  });
+    res.json({
+      shipId,
+      year,
+      cb_before_g: cbCurrent,
+      applied_g: -entry.amount,
+      cb_after_g: cbCurrent - entry.amount,
+      remaining_bank_g: bankTotal,
+    });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 
@@ -154,7 +149,7 @@ router.get("/compliance/adjusted-cb", async (req, res) => {
 
   const y = Number(year);
 
-  const routes = await prisma.route.findMany({ where: { year: y }});
+  const routes = (await repository.getRoutes()).filter(r => r.year === y);
   if (!routes.length) return res.json([]);
 
   const results = [];
@@ -164,9 +159,7 @@ router.get("/compliance/adjusted-cb", async (req, res) => {
     const baseCB = computeCBForRoute(route).complianceBalance_gco2eq;
 
     // Total banked adjustments from bank_entries
-    const entries = await prisma.bankEntry.findMany({
-      where: { shipId: route.routeId, year: y }
-    });
+    const entries = await repository.getBankEntries(route.routeId, y);
     const bankTotal = entries.reduce((sum: any, e: { amount: any; }) => sum + e.amount, 0);
 
     results.push({

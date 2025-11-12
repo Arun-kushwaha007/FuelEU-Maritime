@@ -1,20 +1,47 @@
-// tests/computeComparison.test.ts
-import { computeComparison } from "../../src/core/application/computeComparison.js";
-import { describe, test } from "node:test";
+import { test } from "node:test";
 import assert from "node:assert";
+import { computeComparison } from "../../src/core/application/computeComparison.js";
+import { Route } from "../../src/core/domain/types.js";
 
-describe("computeComparison", () => {
-  test("percent difference and compliance correct", () => {
-    const baseline = { routeId: "R001", ghgIntensity: 91.0 } as any;
-    const others = [{ routeId: "R002", ghgIntensity: 88.0 }] as any[];
+test("computeComparison", () => {
+  const baseline: Route = {
+    routeId: "R001",
+    vesselType: "VLCC",
+    fuelType: "HFO",
+    year: 2024,
+    ghgIntensity: 90,
+    fuelConsumption_t: 100,
+    distance_km: 1000,
+    totalEmissions_t: 300,
+  };
 
-    const rows = computeComparison(baseline, others);
+  const others: Route[] = [
+    {
+      routeId: "R002",
+      vesselType: "VLCC",
+      fuelType: "HFO",
+      year: 2024,
+      ghgIntensity: 80,
+      fuelConsumption_t: 100,
+      distance_km: 1000,
+      totalEmissions_t: 300,
+    },
+    {
+      routeId: "R003",
+      vesselType: "VLCC",
+      fuelType: "HFO",
+      year: 2024,
+      ghgIntensity: 100,
+      fuelConsumption_t: 100,
+      distance_km: 1000,
+      totalEmissions_t: 300,
+    },
+  ];
 
-    const expectedDiff = ((88 / 91) - 1) * 100;
-    assert.ok(
-      Math.abs(rows[0].percentDiff - expectedDiff) < 1e-6,
-      `Expected ${rows[0].percentDiff} ≈ ${expectedDiff}`
-    );
-    assert.strictEqual(rows[0].compliant, true);
-  });
+  const result = computeComparison(baseline, others, 89.3368);
+
+  assert.ok(Math.abs(result[0].percentDiff - -11.111) < 0.001);
+  assert.strictEqual(result[0].compliant, true);
+  assert.ok(Math.abs(result[1].percentDiff - 11.111) < 0.001);
+  assert.strictEqual(result[1].compliant, false);
 });
